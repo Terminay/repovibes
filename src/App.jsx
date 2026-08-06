@@ -3,6 +3,7 @@ import HexagonChart from './components/HexagonChart.jsx';
 import SketchyBox from './components/SketchyBox.jsx';
 import Doodles from './components/Doodles.jsx';
 import ScribbleLoader from './components/ScribbleLoader.jsx';
+import Landing from './components/Landing.jsx';
 import { AXES } from './lib/scoring.js';
 
 function scoreColor(score) {
@@ -272,9 +273,7 @@ export default function App() {
         </div>
       )}
 
-      <footer className="footer">
-        <p>RepoVibes — scores are heuristic vibes, not official metrics</p>
-      </footer>
+      <Landing />
     </div>
   );
 }
