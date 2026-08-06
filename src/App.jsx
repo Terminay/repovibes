@@ -1,11 +1,14 @@
 import React, { useState, useCallback } from 'react';
 import HexagonChart from './components/HexagonChart.jsx';
+import SketchyBox from './components/SketchyBox.jsx';
+import Doodles from './components/Doodles.jsx';
+import ScribbleLoader from './components/ScribbleLoader.jsx';
 import { AXES } from './lib/scoring.js';
 
 function scoreColor(score) {
-  if (score >= 70) return '#3fb950';
-  if (score >= 40) return '#d29922';
-  return '#f85149';
+  if (score >= 70) return '#5a9e4f';
+  if (score >= 40) return '#e0932f';
+  return '#d8452f';
 }
 
 function parseRepoInput(input) {
@@ -29,6 +32,24 @@ function formatNum(n) {
   return String(n);
 }
 
+// Render text with a playful per-letter wobble (alternating small rotations).
+function Wiggle({ text, className = '' }) {
+  return (
+    <span className={`wiggle ${className}`} aria-label={text}>
+      {text.split('').map((ch, i) => (
+        <span
+          key={i}
+          aria-hidden="true"
+          className="wiggle-letter"
+          style={{ '--rot': `${(i % 2 === 0 ? 1 : -1) * (2 + (i % 3))}deg` }}
+        >
+          {ch === ' ' ? '\u00A0' : ch}
+        </span>
+      ))}
+    </span>
+  );
+}
+
 export default function App() {
   const [input, setInput] = useState('');
   const [state, setState] = useState('idle'); // idle | loading | loaded | error
@@ -36,6 +57,8 @@ export default function App() {
   const [error, setError] = useState('');
   const [copied, setCopied] = useState(false);
   const [copyError, setCopyError] = useState('');
+  const [inputFocused, setInputFocused] = useState(false);
+  const [redrawKey, setRedrawKey] = useState(0);
 
   const handleSubmit = useCallback(async (e) => {
     e?.preventDefault();
@@ -68,9 +91,7 @@ export default function App() {
   const embedUrl = result
     ? `${origin}/api/hexagon/${result.data.owner}/${result.data.repo}.svg`
     : '';
-  const embedSnippet = result
-    ? `![RepoVibes](${embedUrl})`
-    : '';
+  const embedSnippet = result ? `![RepoVibes](${embedUrl})` : '';
 
   const handleCopy = useCallback(async () => {
     if (!embedSnippet) return;
@@ -86,41 +107,94 @@ export default function App() {
 
   return (
     <div className="app">
+      <Doodles />
+
       <header className="header">
-        <h1>repo<span className="vibe">vibes</span></h1>
+        <h1>
+          <Wiggle text="repo" />
+          <Wiggle text="vibes" className="vibe" />
+        </h1>
         <p>check the vibes of any public github repo</p>
       </header>
 
       <form className="input-form" onSubmit={handleSubmit}>
-        <input
-          type="text"
-          value={input}
-          onChange={(e) => setInput(e.target.value)}
-          placeholder="github.com/owner/repo  or  owner/repo"
-          autoFocus
-          spellCheck="false"
-        />
-        <button type="submit" disabled={state === 'loading'}>
-          {state === 'loading' ? 'checking…' : 'check vibes'}
-        </button>
+        <SketchyBox
+          className={`input-wrap ${inputFocused ? 'is-focused' : ''}`}
+          contentClassName="input-inner"
+          color={inputFocused ? '#3d9be5' : '#3a3128'}
+          strokeWidth={2.5}
+          roughness={inputFocused ? 2 : 1.6}
+          seed={3}
+          redrawKey={redrawKey}
+        >
+          <input
+            type="text"
+            value={input}
+            onChange={(e) => setInput(e.target.value)}
+            onFocus={() => {
+              setInputFocused(true);
+              setRedrawKey((k) => k + 1);
+            }}
+            onBlur={() => setInputFocused(false)}
+            placeholder="github.com/owner/repo  or  owner/repo"
+            autoFocus
+            spellCheck="false"
+            aria-label="GitHub repository URL or owner/repo"
+          />
+        </SketchyBox>
+
+        <div className="cta-wrap">
+          <SketchyBox
+            className="button-box"
+            contentClassName="button-inner"
+            color="#d8452f"
+            fill="#f2b53a"
+            fillStyle="zigzag"
+            fillWeight={2}
+            hachureGap={5}
+            strokeWidth={3}
+            roughness={1.8}
+            seed={8}
+          >
+            <button type="submit" disabled={state === 'loading'}>
+              {state === 'loading' ? 'checking…' : 'check the vibes!'}
+            </button>
+          </SketchyBox>
+          <svg className="cta-arrow" viewBox="0 0 80 60" aria-hidden="true">
+            <path
+              d="M6 8 C 30 2, 55 18, 62 40"
+              fill="none"
+              stroke="#3d9be5"
+              strokeWidth="2.5"
+              strokeLinecap="round"
+            />
+            <path
+              d="M62 40 L 52 34 M62 40 L 66 28"
+              fill="none"
+              stroke="#3d9be5"
+              strokeWidth="2.5"
+              strokeLinecap="round"
+            />
+          </svg>
+        </div>
       </form>
 
       {state === 'error' && (
-        <div className="preview-card">
+        <div className="paper-card error-card">
           <div className="error-state">
-            <div className="error-icon">⚠</div>
-            <div>couldn't check that repo</div>
+            <div className="error-icon">!?</div>
+            <div className="error-title">couldn&apos;t check that repo</div>
             <div className="error-msg">{error}</div>
           </div>
         </div>
       )}
 
       {state === 'loading' && (
-        <div className="preview-card">
+        <div className="paper-card">
           <div className="chart-area">
             <div className="loading-state">
-              <div className="spinner" />
-              <div>fetching vibes…</div>
+              <ScribbleLoader />
+              <div className="loading-text">scribbling your vibes…</div>
             </div>
           </div>
         </div>
@@ -128,11 +202,13 @@ export default function App() {
 
       {state === 'loaded' && result && (
         <>
-          <div className="preview-card">
+          <div className="paper-card">
             <div className="repo-info">
-              <img src={result.data.avatar} alt="" />
-              <div className="repo-name">{result.data.name}</div>
-              <div className="repo-stars">★ {formatNum(result.data.stars)}</div>
+              <div className="sticky-note avatar-note">
+                <img src={result.data.avatar || '/placeholder.svg'} alt="" />
+              </div>
+              <div className="sticky-note name-note">{result.data.name}</div>
+              <div className="sticky-note star-note">★ {formatNum(result.data.stars)}</div>
             </div>
             <div className="chart-area">
               <HexagonChart scores={result.scores} repo={result.data} />
@@ -150,11 +226,15 @@ export default function App() {
                     <div style={{ flex: 1 }}>
                       <div className="label">{axis.label}</div>
                       <div className="score-bar">
-                        <div className="score-bar-fill"
-                          style={{ width: `${score}%`, background: scoreColor(score) }} />
+                        <div
+                          className="score-bar-fill"
+                          style={{ width: `${score}%`, background: scoreColor(score) }}
+                        />
                       </div>
                     </div>
-                    <div className="value" style={{ color: scoreColor(score) }}>{score}</div>
+                    <div className="value" style={{ color: scoreColor(score) }}>
+                      {score}
+                    </div>
                   </div>
                 );
               })}
@@ -165,12 +245,17 @@ export default function App() {
           <div className="embed-section">
             <div className="embed-label">markdown embed snippet</div>
             <div className="code-block">
+              <span className="tape tape-left" aria-hidden="true" />
+              <span className="tape tape-right" aria-hidden="true" />
               <code>{embedSnippet}</code>
-              <button className={`copy-btn ${copied ? 'copied' : ''}`} onClick={handleCopy}>
+              <button
+                className={`copy-btn ${copied ? 'copied' : ''}`}
+                onClick={handleCopy}
+              >
                 {copied ? 'copied!' : 'copy'}
               </button>
             </div>
-            <div style={{ marginTop: 8, fontSize: 12, color: copyError ? 'var(--error)' : 'var(--text-faint)' }}>
+            <div className={`embed-hint ${copyError ? 'is-error' : ''}`}>
               {copyError || 'paste this in your README — the svg renders directly in github'}
             </div>
           </div>
@@ -178,7 +263,7 @@ export default function App() {
       )}
 
       {state === 'idle' && (
-        <div className="preview-card">
+        <div className="paper-card">
           <div className="chart-area">
             <div className="empty-state">
               paste a repo url above to see its vibes
