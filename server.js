@@ -79,7 +79,7 @@ app.get('/api/parse/:input', (req, res) => {
 function buildErrorSVG(message, repo) {
   return `<svg xmlns="http://www.w3.org/2000/svg" width="400" height="120" viewBox="0 0 400 120">
     <rect width="400" height="120" fill="#0d1117" rx="8"/>
-    <text x="200" y="45" text-anchor="middle" font-family="sans-serif" font-size="14" fill="#f85149" font-weight="600">RepoVibes</text>
+    <text x="200" y="45" text-anchor="middle" font-family="sans-serif" font-size="14" fill="#f85149" font-weight="600">Project</text>
     <text x="200" y="70" text-anchor="middle" font-family="monospace" font-size="11" fill="#8b949e">${escapeXml(repo)}</text>
     <text x="200" y="92" text-anchor="middle" font-family="sans-serif" font-size="11" fill="#f85149">${escapeXml(message)}</text>
   </svg>`;
@@ -108,10 +108,10 @@ app.get('*', (req, res) => {
     return res.sendFile(indexFile);
   }
   return res.status(503).type('text').send(
-    'RepoVibes server is running but the frontend has not been built. Run `npm run build` first.'
+    'Project server is running but the frontend has not been built. Run `npm run build` first.'
   );
 });
 
 app.listen(PORT, () => {
-  console.log(`RepoVibes server running on http://localhost:${PORT}`);
+  console.log(`Project server running on http://localhost:${PORT}`);
 });

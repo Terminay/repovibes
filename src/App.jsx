@@ -69,7 +69,7 @@ export default function App() {
     ? `${origin}/api/hexagon/${result.data.owner}/${result.data.repo}.svg`
     : '';
   const embedSnippet = result
-    ? `![RepoVibes](${embedUrl})`
+    ? `![Project](${embedUrl})`
     : '';
 
   const handleCopy = useCallback(async () => {
@@ -87,8 +87,8 @@ export default function App() {
   return (
     <div className="app">
       <header className="header">
-        <h1>repo<span className="vibe">vibes</span></h1>
-        <p>check the vibes of any public github repo</p>
+        <h1>project</h1>
+        <p>inspect any public github repo</p>
       </header>
 
       <form className="input-form" onSubmit={handleSubmit}>
@@ -120,7 +120,7 @@ export default function App() {
           <div className="chart-area">
             <div className="loading-state">
               <div className="spinner" />
-              <div>fetching vibes…</div>
+              <div>fetching repo data…</div>
             </div>
           </div>
         </div>
@@ -181,14 +181,14 @@ export default function App() {
         <div className="preview-card">
           <div className="chart-area">
             <div className="empty-state">
-              paste a repo url above to see its vibes
+              paste a repo url above to inspect it
             </div>
           </div>
         </div>
       )}
 
       <footer className="footer">
-        <p>RepoVibes — scores are heuristic vibes, not official metrics</p>
+        <p>Project — scores are heuristic signals, not official metrics</p>
       </footer>
     </div>
   );

@@ -23,7 +23,7 @@ async function ghFetch(path) {
   const res = await fetch(`${API}${path}`, {
     headers: {
       Accept: 'application/vnd.github+json',
-      'User-Agent': 'RepoVibes',
+      'User-Agent': 'Project',
       ...(process.env.GITHUB_TOKEN ? { Authorization: `Bearer ${process.env.GITHUB_TOKEN}` } : {}),
     },
   });

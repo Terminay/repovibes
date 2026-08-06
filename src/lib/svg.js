@@ -108,7 +108,7 @@ export function buildHexagonSVG(scores, repo = null) {
     <text x="${CX}" y="${CY - 2}" text-anchor="middle" font-family="'Inter', sans-serif" font-size="9" fill="${COLORS.textDim}">vibes</text>
     <text x="${CX}" y="${CY + 12}" text-anchor="middle" font-family="'JetBrains Mono', monospace" font-size="15" font-weight="700" fill="${overallColor}">${overall}</text>
   </g>
-  <text x="${SIZE / 2}" y="${SIZE + headerH - 8}" text-anchor="middle" font-family="'Inter', sans-serif" font-size="10" fill="${COLORS.textDim}">RepoVibes</text>
+  <text x="${SIZE / 2}" y="${SIZE + headerH - 8}" text-anchor="middle" font-family="'Inter', sans-serif" font-size="10" fill="${COLORS.textDim}">Project</text>
 </svg>`;
 }
 
