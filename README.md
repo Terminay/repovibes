@@ -36,7 +36,7 @@ Here is an example for `facebook/react`:
 
 This will render the following SVG directly in your GitHub profile or repository:
 
-![RepoVibes](https://repovibes.vercel.app/api/hexagon/facebook/react.svg)
+![RepoVibes](https://repovibes.vercel.app/api/hexagon/react/react.svg)
 
 ## Running Locally
 
