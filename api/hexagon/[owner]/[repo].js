@@ -13,10 +13,10 @@ function escapeXml(s) {
 
 function buildErrorSVG(message, repo) {
   return `<svg xmlns="http://www.w3.org/2000/svg" width="400" height="120" viewBox="0 0 400 120">
-    <rect width="400" height="120" fill="#0d1117" rx="8"/>
-    <text x="200" y="45" text-anchor="middle" font-family="sans-serif" font-size="14" fill="#f85149" font-weight="600">RepoVibes</text>
-    <text x="200" y="70" text-anchor="middle" font-family="monospace" font-size="11" fill="#8b949e">${escapeXml(repo)}</text>
-    <text x="200" y="92" text-anchor="middle" font-family="sans-serif" font-size="11" fill="#f85149">${escapeXml(message)}</text>
+    <rect x="4" y="4" width="392" height="112" rx="10" fill="#fffaf0" stroke="#3a3128" stroke-width="3"/>
+    <text x="200" y="40" text-anchor="middle" font-family="'Caveat', cursive" font-size="26" font-weight="700" fill="#d8452f">RepoVibes</text>
+    <text x="200" y="66" text-anchor="middle" font-family="'Patrick Hand', cursive" font-size="16" fill="#6b5f4d">${escapeXml(repo)}</text>
+    <text x="200" y="90" text-anchor="middle" font-family="'Patrick Hand', cursive" font-size="15" fill="#d8452f">${escapeXml(message)}</text>
   </svg>`;
 }
 
