@@ -1,5 +1,7 @@
 // github.js — fetches repo data from the GitHub REST API (unauthenticated)
 // and normalizes it into the shape expected by scoring.js.
+// Fetches a rich set of signals so the scoring heuristics can differentiate
+// repos beyond surface-level counts.
 
 const API = 'https://api.github.com';
 
@@ -30,6 +32,15 @@ async function ghFetch(path) {
   return res;
 }
 
+async function safeJson(res, fallback) {
+  if (!res.ok) return fallback;
+  try {
+    return await res.json();
+  } catch {
+    return fallback;
+  }
+}
+
 // Fetch all the data needed for scoring in parallel.
 // Throws { status, message } on error so the caller can map to HTTP status.
 export async function fetchRepoData(owner, repo) {
@@ -47,36 +58,75 @@ export async function fetchRepoData(owner, repo) {
   const repoInfo = await repoRes.json();
 
   // 2. Parallel fetches for supporting data.
-  // All use per_page limits to be gentle on rate limits.
+  const staleDateCutoff = new Date(Date.now() - 180 * 86400000).toISOString().split('T')[0];
+
   const [
     contributorsRes, commitsRes, closedIssuesRes, closedCountRes,
-    readmeRes, releasesRes,
+    openIssuesRes, mergedPRsRes, openPRsRes, readmeRes, releasesRes,
+    languagesRes, communityRes, eventsRes, staleIssuesRes,
   ] = await Promise.all([
     ghFetch(`/repos/${owner}/${repo}/contributors?per_page=100&anon=true`),
     ghFetch(`/repos/${owner}/${repo}/commits?per_page=100`),
     ghFetch(`/repos/${owner}/${repo}/issues?state=closed&per_page=30&sort=created&direction=desc`),
     ghFetch(`/search/issues?q=${encodeURIComponent(`repo:${owner}/${repo} is:issue is:closed`)}&per_page=1`),
+    ghFetch(`/search/issues?q=${encodeURIComponent(`repo:${owner}/${repo} is:issue is:open`)}&per_page=1`),
+    ghFetch(`/search/issues?q=${encodeURIComponent(`repo:${owner}/${repo} is:pr is:merged`)}&per_page=1`),
+    ghFetch(`/search/issues?q=${encodeURIComponent(`repo:${owner}/${repo} is:pr is:open`)}&per_page=1`),
     ghFetch(`/repos/${owner}/${repo}/readme`),
     ghFetch(`/repos/${owner}/${repo}/releases?per_page=100`),
+    ghFetch(`/repos/${owner}/${repo}/languages`),
+    ghFetch(`/repos/${owner}/${repo}/community/profile`),
+    ghFetch(`/repos/${owner}/${repo}/events?per_page=100`),
+    ghFetch(`/search/issues?q=${encodeURIComponent(`repo:${owner}/${repo} is:issue is:open created:<${staleDateCutoff}`)}&per_page=1`),
   ]);
 
-  const contributors = contributorsRes.ok ? await contributorsRes.json() : [];
-  const commits = commitsRes.ok ? await commitsRes.json() : [];
-  const closedIssues = closedIssuesRes.ok ? await closedIssuesRes.json() : [];
-  const releases = releasesRes.ok ? await releasesRes.json() : [];
+  let staleIssueCount = 0;
+  if (staleIssuesRes.ok) {
+    const staleSearch = await staleIssuesRes.json().catch(() => null);
+    if (staleSearch?.total_count != null) staleIssueCount = staleSearch.total_count;
+  }
+
+  const contributors = await safeJson(contributorsRes, []);
+  const commits = await safeJson(commitsRes, []);
+  const closedIssues = await safeJson(closedIssuesRes, []);
+  const releases = await safeJson(releasesRes, []);
+  const languages = await safeJson(languagesRes, {});
+  const communityProfile = await safeJson(communityRes, null);
+  const events = await safeJson(eventsRes, []);
 
   // True closed issue count via search API (total_count reflects all matches).
   let closedIssueCount = closedIssues.length;
   if (closedCountRes.ok) {
-    const search = await closedCountRes.json();
-    if (search.total_count != null) closedIssueCount = search.total_count;
+    const search = await closedCountRes.json().catch(() => null);
+    if (search?.total_count != null) closedIssueCount = search.total_count;
+  }
+
+  // True open issue count via search (more accurate than repoInfo for old repos).
+  let openIssueCount = repoInfo.open_issues_count ?? 0;
+  if (openIssuesRes.ok) {
+    const search = await openIssuesRes.json().catch(() => null);
+    if (search?.total_count != null) openIssueCount = search.total_count;
+  }
+
+  // Merged PR count.
+  let mergedPRCount = 0;
+  if (mergedPRsRes.ok) {
+    const search = await mergedPRsRes.json().catch(() => null);
+    if (search?.total_count != null) mergedPRCount = search.total_count;
+  }
+
+  // Open PR count.
+  let openPRCount = 0;
+  if (openPRsRes.ok) {
+    const search = await openPRsRes.json().catch(() => null);
+    if (search?.total_count != null) openPRCount = search.total_count;
   }
 
   // README length (bytes).
   let readmeLength = 0;
   if (readmeRes.ok) {
-    const readme = await readmeRes.json();
-    if (readme.content) {
+    const readme = await readmeRes.json().catch(() => null);
+    if (readme?.content) {
       try { readmeLength = Buffer.from(readme.content, 'base64').length; }
       catch { readmeLength = readme.size || 0; }
     }
@@ -93,14 +143,24 @@ export async function fetchRepoData(owner, repo) {
 
   // Commit frequency in last 90 days.
   const ninetyDaysAgo = Date.now() - 90 * 86400000;
-  const recentCommitCount = commits.filter((c) =>
+  const recentCommits = commits.filter((c) =>
     new Date(c.commit.committer.date).getTime() >= ninetyDaysAgo
-  ).length;
+  );
 
-  // Open issue count from repo info.
-  const openIssues = repoInfo.open_issues_count ?? 0;
+  // Unique authors in last 100 commits (active contributor diversity).
+  const recentAuthors = new Set();
+  for (const c of recentCommits) {
+    const author = c.author?.login || c.commit?.author?.name || c.commit?.committer?.name;
+    if (author) recentAuthors.add(author);
+  }
+  const recentAuthorCount = recentAuthors.size;
 
-  // Average time-to-close for recently closed issues.
+  // Commit dates for cadence regularity.
+  const commitDates = recentCommits
+    .map((c) => new Date(c.commit.committer.date).getTime())
+    .sort((a, b) => a - b);
+
+  // Average issue time-to-close for recently closed issues.
   let avgIssueCloseDays = null;
   if (closedIssues.length > 0) {
     const closeTimes = closedIssues
@@ -111,17 +171,63 @@ export async function fetchRepoData(owner, repo) {
     }
   }
 
+  // Median time-to-close (less skewed by outliers).
+  let medianIssueCloseDays = null;
+  if (closedIssues.length > 0) {
+    const closeTimes = closedIssues
+      .filter((i) => i.closed_at && i.created_at)
+      .map((i) => (new Date(i.closed_at) - new Date(i.created_at)) / 86400000)
+      .sort((a, b) => a - b);
+    if (closeTimes.length > 0) {
+      const mid = Math.floor(closeTimes.length / 2);
+      medianIssueCloseDays = closeTimes.length % 2 === 0
+        ? (closeTimes[mid - 1] + closeTimes[mid]) / 2
+        : closeTimes[mid];
+    }
+  }
+
   // Releases.
   const releaseCount = releases.length;
   let latestReleaseDaysAgo = null;
+  let releaseCadenceDays = null; // average days between releases
   if (releases.length > 0) {
     const latest = new Date(releases[0].published_at || releases[0].created_at);
     latestReleaseDaysAgo = Math.max(0, Math.floor((Date.now() - latest) / 86400000));
+    if (releases.length > 1) {
+      const dates = releases
+        .map((r) => new Date(r.published_at || r.created_at).getTime())
+        .sort((a, b) => a - b);
+      const gaps = [];
+      for (let i = 1; i < dates.length; i++) gaps.push((dates[i] - dates[i - 1]) / 86400000);
+      releaseCadenceDays = gaps.reduce((a, b) => a + b, 0) / gaps.length;
+    }
   }
 
   // Repo age.
   const createdAt = new Date(repoInfo.created_at);
   const ageDays = Math.max(1, Math.floor((Date.now() - createdAt) / 86400000));
+
+  // Language count.
+  const languageCount = Object.keys(languages).length;
+  const languageBytes = Object.values(languages).reduce((a, b) => a + b, 0) || 1;
+  // Herfindahl index: 1 = single language, →0 = evenly distributed.
+  const langH = Object.values(languages)
+    .map((b) => b / languageBytes)
+    .reduce((sum, p) => sum + p * p, 0);
+
+  // Community profile signals (health files).
+  const hasCodeOfConduct = Boolean(communityProfile?.files?.code_of_conduct?.present);
+  const hasContributing = Boolean(communityProfile?.files?.contributing?.present);
+  const hasIssueTemplate = Boolean(communityProfile?.files?.issue_template?.present);
+  const hasPRTemplate = Boolean(communityProfile?.files?.pull_request_template?.present);
+
+  // Recent event activity (last 90 days) for engagement signals.
+  const recentEvents = events.filter((e) =>
+    new Date(e.created_at).getTime() >= ninetyDaysAgo
+  );
+  const recentEventCount = recentEvents.length;
+  const recentWatchEvents = recentEvents.filter((e) => e.type === 'WatchEvent').length;
+  const recentForkEvents = recentEvents.filter((e) => e.type === 'ForkEvent').length;
 
   const data = {
     // Basic
@@ -131,25 +237,50 @@ export async function fetchRepoData(owner, repo) {
     avatar: repoInfo.owner.avatar_url,
     description: repoInfo.description,
     topics: repoInfo.topics ?? [],
+    homepage: repoInfo.homepage,
     stars: repoInfo.stargazers_count ?? 0,
     forks: repoInfo.forks_count ?? 0,
+    watchers: repoInfo.subscribers_count ?? 0,
+    openRepos: repoInfo.open_issues_count ?? 0,
+    isArchived: Boolean(repoInfo.archived),
+    isFork: Boolean(repoInfo.fork),
+    hasPages: Boolean(repoInfo.has_pages),
+    defaultBranch: repoInfo.default_branch,
     // Activity
     lastCommitDaysAgo,
-    recentCommitCount,
+    recentCommitCount: recentCommits.length,
+    recentAuthorCount,
+    commitDates,
+    recentEventCount,
     // Community
     contributorCount: Array.isArray(contributors) ? contributors.length : 0,
+    hasCodeOfConduct,
+    hasContributing,
+    hasIssueTemplate,
+    hasPRTemplate,
+    hasDiscussions: Boolean(repoInfo.has_discussions),
     // Responsiveness
-    openIssues,
+    openIssues: openIssueCount,
     closedIssues: closedIssueCount,
     avgIssueCloseDays,
+    medianIssueCloseDays,
+    staleIssueCount,
+    openPRCount,
+    mergedPRCount,
     // Documentation
     readmeLength,
     hasLicense,
+    languageCount,
+    langDiversity: 1 - langH,
+    hasWiki: Boolean(repoInfo.has_wiki),
     // Stability
     releaseCount,
     latestReleaseDaysAgo,
+    releaseCadenceDays,
     // Popularity
     ageDays,
+    recentWatchEvents,
+    recentForkEvents,
   };
 
   setCached(owner, repo, data);

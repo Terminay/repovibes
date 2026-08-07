@@ -1,128 +1,257 @@
 // scoring.js — heuristics mapping GitHub API data to 0-100 scores per axis.
-// All functions are pure and deterministic so the backend SVG and frontend
-// preview render identical results.
+// Each axis combines multiple weighted signals so repos with similar surface
+// stats still differentiate. All functions are pure and deterministic so the
+// backend SVG and frontend preview render identical results.
 
-// Helper: clamp a value to [0, 100] and round.
 const clamp = (v) => Math.max(0, Math.min(100, Math.round(v)));
 
-// Helper: linear interpolation between 0..100 over an input range.
-// If input <= low → 0, if input >= high → 100, linear in between.
+// Linear interpolation over [low, high]. Below low → 0, above high → 100.
 const lerp = (value, low, high) => {
   if (value <= low) return 0;
   if (value >= high) return 100;
   return ((value - low) / (high - low)) * 100;
 };
 
-// Activity: how actively the repo is being worked on.
-// Considers days since last commit (fresher = better) and commit frequency
-// in the last 90 days (more frequent = better).
-export function scoreActivity(data) {
-  // Days since the last commit on the default branch.
-  const lastCommitDays = data.lastCommitDaysAgo ?? Infinity;
-  // Freshness contributes 50%: <7 days = full marks, >365 days = 0.
-  const freshness = lerp(365 - lastCommitDays, 0, 358); // 365-7=358 range
+// Logarithmic interpolation — handles huge ranges without saturation.
+// Maps log10(value) over [logLow, logHigh] to 0-100.
+const logLerp = (value, low, high) => lerp(Math.log10(value + 1), Math.log10(low + 1), Math.log10(high + 1));
 
-  // Commit frequency in the last 90 days.
-  // <1/week = low, ~1/day (90 commits) = high.
-  const recentCommits = data.recentCommitCount ?? 0;
-  const frequency = lerp(recentCommits, 4, 90); // 4 commits/90d → 90 commits
-
-  return clamp(freshness * 0.5 + frequency * 0.5);
+// Weighted average of [value, weight] pairs. Missing values fall back to 50
+// (neutral) so absent data doesn't skew the result.
+function weightedMean(pairs) {
+  let total = 0;
+  let weight = 0;
+  for (const [value, w] of pairs) {
+    if (value == null || Number.isNaN(value)) continue;
+    total += value * w;
+    weight += w;
+  }
+  return weight > 0 ? total / weight : 50;
 }
 
-// Community: how many people are contributing.
-// Contributors count via /contributors endpoint (capped since the list is
-// paginated and we only fetch the first page).
+// Standard deviation of an array (for cadence regularity).
+function stdev(arr) {
+  if (arr.length < 2) return 0;
+  const mean = arr.reduce((a, b) => a + b, 0) / arr.length;
+  const variance = arr.reduce((a, b) => a + (b - mean) ** 2, 0) / arr.length;
+  return Math.sqrt(variance);
+}
+
+// ── Activity ───────────────────────────────────────────────────────────
+// How actively the repo is being worked on, right now. Combines freshness,
+// commit volume, cadence regularity, author diversity, and event buzz.
+export function scoreActivity(data) {
+  const lastCommitDays = data.lastCommitDaysAgo ?? Infinity;
+  const freshness = lerp(365 - lastCommitDays, 0, 358); // 7d → full, 365d → 0
+
+  const recentCommits = data.recentCommitCount ?? 0;
+  const frequency = logLerp(recentCommits, 4, 300); // 4 → 300 commits/90d
+
+  // Cadence regularity: compute gaps between recent commits; tighter = better.
+  let cadence = 50;
+  const dates = data.commitDates ?? [];
+  if (dates.length >= 3) {
+    const gaps = [];
+    for (let i = 1; i < dates.length; i++) gaps.push((dates[i] - dates[i - 1]) / 86400000);
+    const meanGap = gaps.reduce((a, b) => a + b, 0) / gaps.length || 1;
+    const cv = stdev(gaps) / meanGap; // coefficient of variation
+    cadence = clamp(100 - cv * 60); // CV 0 → 100, CV ~1.67 → 0
+  }
+
+  // Active author diversity in recent commits.
+  const authors = data.recentAuthorCount ?? 0;
+  const authorDiversity = logLerp(authors, 1, 20);
+
+  // Event buzz (watch/fork/push events in last 90 days).
+  const events = data.recentEventCount ?? 0;
+  const eventBuzz = logLerp(events, 5, 500);
+
+  return clamp(weightedMean([
+    [freshness, 3],
+    [frequency, 3],
+    [cadence, 1.5],
+    [authorDiversity, 1.5],
+    [eventBuzz, 1],
+  ]));
+}
+
+// ── Community ──────────────────────────────────────────────────────────
+// How healthy and welcoming the contributor base is. Combines contributor
+// volume, governance docs, issue/PR templates, discussions, and PR throughput.
 export function scoreCommunity(data) {
   const contributors = data.contributorCount ?? 0;
-  // 1 contributor = low, 50+ = full marks.
-  return clamp(lerp(contributors, 1, 50));
+  const contributorVolume = logLerp(contributors, 1, 100);
+
+  // Governance & welcoming docs.
+  const govScore = [
+    data.hasCodeOfConduct,
+    data.hasContributing,
+    data.hasIssueTemplate,
+    data.hasPRTemplate,
+    data.hasDiscussions,
+  ].filter(Boolean).length * 20;
+
+  // PR throughput as a proxy for external participation.
+  const mergedPRs = data.mergedPRCount ?? 0;
+  const prThroughput = logLerp(mergedPRs, 0, 500);
+
+  return clamp(weightedMean([
+    [contributorVolume, 3],
+    [govScore, 3],
+    [prThroughput, 2],
+  ]));
 }
 
-// Responsiveness: how well maintainers handle issues.
-// Considers closed/open ratio and average time to close recently closed issues.
+// ── Responsiveness ─────────────────────────────────────────────────────
+// How well maintainers handle issues and PRs. Combines close ratio, median
+// time-to-close (robust to outliers), stale-issue ratio, and PR backlog.
 export function scoreResponsiveness(data) {
   const open = data.openIssues ?? 0;
   const closed = data.closedIssues ?? 0;
   const total = open + closed;
 
-  // No issues at all → neutral (avoid penalizing repos that just don't use them).
-  if (total === 0) return 50;
+  if (total === 0 && (data.openPRCount ?? 0) === 0) return 50;
 
-  // Closed ratio: 0% closed = 0, 90%+ closed = 100.
-  const closedRatio = closed / total;
-  const ratioScore = lerp(closedRatio, 0, 0.9);
+  // Closed ratio.
+  const closedRatio = total > 0 ? closed / total : 0.5;
+  const ratioScore = lerp(closedRatio, 0, 0.95);
 
-  // Time-to-close: <1 day = great, >60 days = poor. In days.
-  const avgCloseDays = data.avgIssueCloseDays ?? null;
-  let timeScore = 50; // neutral if unknown
-  if (avgCloseDays !== null) {
-    timeScore = lerp(60 - avgCloseDays, 0, 59); // 60d → 1d range
+  // Median time-to-close (days). More robust than average.
+  const medianDays = data.medianIssueCloseDays ?? data.avgIssueCloseDays;
+  let timeScore = 50;
+  if (medianDays != null) timeScore = lerp(60 - medianDays, 0, 59);
+
+  // Stale issue ratio: fraction of open issues older than 180 days.
+  let staleScore = 50;
+  if (open > 0) {
+    const staleRatio = (data.staleIssueCount ?? 0) / open;
+    staleScore = lerp(1 - staleRatio, 0, 1);
   }
 
-  return clamp(ratioScore * 0.6 + timeScore * 0.4);
+  // PR backlog: open PRs vs merged PRs. High open/merged ratio = bottleneck.
+  let prScore = 50;
+  const merged = data.mergedPRCount ?? 0;
+  const openPRs = data.openPRCount ?? 0;
+  if (merged + openPRs > 0) {
+    const prRatio = merged / (merged + openPRs);
+    prScore = lerp(prRatio, 0, 0.9);
+  }
+
+  return clamp(weightedMean([
+    [ratioScore, 3],
+    [timeScore, 2.5],
+    [staleScore, 2],
+    [prScore, 2.5],
+  ]));
 }
 
-// Documentation: README presence + length, LICENSE, description & topics.
+// ── Documentation ──────────────────────────────────────────────────────
+// How thoroughly the repo is documented. Combines README depth, LICENSE,
+// description, topics, homepage, wiki, and language ecosystem clarity.
 export function scoreDocumentation(data) {
   let score = 0;
 
-  // README present and length as rough proxy for depth.
   const readmeLen = data.readmeLength ?? 0;
-  if (readmeLen > 0) score += 20;
-  score += lerp(readmeLen, 100, 5000) * 0.3; // up to 30 points
+  if (readmeLen > 0) score += 15;
+  score += logLerp(readmeLen, 100, 20000) * 0.25; // up to 25
 
-  // LICENSE file present.
-  if (data.hasLicense) score += 20;
+  if (data.hasLicense) score += 15;
+  if (data.description && data.description.trim().length > 10) score += 10;
 
-  // Description filled in.
-  if (data.description && data.description.trim().length > 10) score += 15;
-
-  // Topics set (at least 3 topics = full marks for this sub-score).
   const topics = data.topics ?? [];
-  score += lerp(topics.length, 0, 3) * 0.15; // up to 15 points
+  score += lerp(topics.length, 0, 5) * 0.08; // up to 8
+
+  if (data.homepage && data.homepage.trim()) score += 7;
+  if (data.hasWiki) score += 5;
+
+  // Language ecosystem clarity: a focused codebase is easier to document.
+  const langCount = data.languageCount ?? 0;
+  if (langCount >= 1) score += Math.min(10, 4 + langCount * 2); // 6 → 10
+
+  // Governance docs (overlap with community, but they're docs too).
+  let docExtras = 0;
+  if (data.hasContributing) docExtras += 5;
+  if (data.hasCodeOfConduct) docExtras += 3;
+  if (data.hasIssueTemplate) docExtras += 4;
+  if (data.hasPRTemplate) docExtras += 3;
+  score += docExtras;
 
   return clamp(score);
 }
 
-// Stability: tagged releases and release frequency.
+// ── Stability ──────────────────────────────────────────────────────────
+// How production-ready and reliable the repo appears. Combines release
+// volume, recency, cadence consistency, non-archived status, and license.
 export function scoreStability(data) {
-  const releases = data.releaseCount ?? 0;
-  // No releases = 0, 1 release = some, 10+ = full marks for volume.
-  const releaseVolume = lerp(releases, 0, 10);
+  if (data.isArchived) return 15; // archived = frozen, low stability going forward
 
-  // Release recency: how fresh is the latest release (days ago).
+  const releases = data.releaseCount ?? 0;
+  const releaseVolume = logLerp(releases, 0, 50);
+
   let recencyScore = 0;
   if (data.latestReleaseDaysAgo != null) {
-    // <30 days = full, >365 days = 0.
     recencyScore = lerp(365 - data.latestReleaseDaysAgo, 0, 335);
   } else if (releases > 0) {
-    recencyScore = 30; // has releases but age unknown → modest score
+    recencyScore = 30;
   }
 
-  return clamp(releaseVolume * 0.5 + recencyScore * 0.5);
+  // Cadence consistency: regular releases beat sporadic bursts.
+  let cadenceScore = 50;
+  if (data.releaseCadenceDays != null && releases > 2) {
+    // Ideal: 7-90 day cycles. Too fast or too slow both lose points.
+    const d = data.releaseCadenceDays;
+    if (d <= 7) cadenceScore = lerp(d, 1, 7);
+    else if (d <= 90) cadenceScore = 100;
+    else cadenceScore = lerp(365 - d, 0, 275);
+  }
+
+  const licenseScore = data.hasLicense ? 100 : 20;
+
+  // Stars as a trust proxy (log-scaled).
+  const trustScore = logLerp(data.stars ?? 0, 10, 10000);
+
+  return clamp(weightedMean([
+    [releaseVolume, 2.5],
+    [recencyScore, 2.5],
+    [cadenceScore, 2],
+    [licenseScore, 1.5],
+    [trustScore, 1.5],
+  ]));
 }
 
-// Popularity: stars + forks, weighted by repo age (growth rate, not raw totals).
+// ── Popularity ─────────────────────────────────────────────────────────
+// How much attention the repo attracts, adjusted for age. Combines stars,
+// forks, watchers, and recent growth signals (watch/fork events).
 export function scorePopularity(data) {
   const stars = data.stars ?? 0;
   const forks = data.forks ?? 0;
 
-  // Raw popularity (log-ish curve so huge repos don't dominate).
-  // 10 stars = low, 10k+ = full.
-  const rawScore = lerp(Math.log10(stars + 1), 1, 4); // log10(10)=1 → log10(10000)=4
+  // Raw popularity (log curve so huge repos don't dominate).
+  const rawScore = logLerp(stars, 10, 50000);
 
-  // Repo age in days; weight so newer repos with same stars score higher
-  // (faster growth). If <90 days old, treat as 90 to avoid division noise.
+  // Growth rate: stars per day, age-adjusted.
   const ageDays = Math.max(90, data.ageDays ?? 365);
   const starsPerDay = stars / ageDays;
-  // 0.05 stars/day ≈ slow, 0.5 stars/day ≈ very fast.
-  const growthScore = lerp(starsPerDay, 0.05, 0.5);
+  const growthScore = logLerp(starsPerDay, 0.01, 1);
 
-  // Forks as a secondary signal: 0 forks = low, 100+ = full.
-  const forkScore = lerp(forks, 0, 100);
+  // Forks (secondary adoption signal).
+  const forkScore = logLerp(forks, 0, 5000);
 
-  return clamp(rawScore * 0.4 + growthScore * 0.4 + forkScore * 0.2);
+  // Watchers (subscribers — deeper engagement than stars).
+  const watchers = data.watchers ?? 0;
+  const watcherScore = logLerp(watchers, 5, 2000);
+
+  // Recent momentum: watch + fork events in last 90 days.
+  const recentMomentum = (data.recentWatchEvents ?? 0) + (data.recentForkEvents ?? 0);
+  const momentumScore = logLerp(recentMomentum, 0, 200);
+
+  return clamp(weightedMean([
+    [rawScore, 3],
+    [growthScore, 2],
+    [forkScore, 1.5],
+    [watcherScore, 1.5],
+    [momentumScore, 2],
+  ]));
 }
 
 export const AXES = [
@@ -135,7 +264,6 @@ export const AXES = [
 ];
 
 // Compute all 6 scores from a normalized repo data object.
-// Returns { activity, community, responsiveness, documentation, stability, popularity }
 export function computeScores(data) {
   const result = {};
   for (const axis of AXES) {
