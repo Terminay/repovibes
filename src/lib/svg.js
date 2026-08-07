@@ -1,150 +1,261 @@
+// svg.js — builds the standalone embeddable SVG for a repo's vibes chart.
+// Mirrors the HexagonChart React component exactly: same rough.js paths,
+// seeds, colors, stroke widths, and layout. Wraps the chart in a paper card
+// with sticky-note repo header matching the webapp's look.
+import rough from 'roughjs';
 import { AXES } from './scoring.js';
 
-const CX = 260;
-const CY = 275;
-const R = 132;
-const WIDTH = 520;
-const HEIGHT = 520;
+let _gen;
+function gen() {
+  if (!_gen) _gen = rough.generator();
+  return _gen;
+}
 
-const COLORS = {
+function toPaths(drawable) {
+  return gen().toPaths(drawable);
+}
+
+function polygonPaths(points, options = {}) {
+  return toPaths(gen().polygon(points, { roughness: 1.4, bowing: 1, ...options }));
+}
+
+function linePaths(x1, y1, x2, y2, options = {}) {
+  return toPaths(gen().line(x1, y1, x2, y2, { roughness: 1.2, bowing: 1, ...options }));
+}
+
+function circlePaths(cx, cy, diameter, options = {}) {
+  return toPaths(gen().circle(cx, cy, diameter, { roughness: 1.3, ...options }));
+}
+
+// ── Chart constants (must match HexagonChart.jsx exactly) ──────────────
+const CHART_CX = 200;
+const CHART_CY = 175;
+const CHART_R = 105;
+
+function vertex(i, radiusRatio) {
+  const angle = -Math.PI / 2 + (i * 2 * Math.PI) / 6;
+  const r = CHART_R * radiusRatio;
+  return [CHART_CX + r * Math.cos(angle), CHART_CY + r * Math.sin(angle)];
+}
+
+function polygonPointArray(ratios) {
+  return ratios.map((ratio, i) => vertex(i, ratio));
+}
+
+function scoreColor(score) {
+  if (score >= 70) return '#5a9e4f';
+  if (score >= 40) return '#e0932f';
+  return '#d8452f';
+}
+
+// ── Colors (must match index.css CSS variables) ────────────────────────
+const COL = {
   paper: '#f6efdd',
   paperLight: '#fffaf0',
   ink: '#3a3128',
   inkSoft: '#6b5f4d',
   grid: '#c9bda0',
-  blue: '#3d9be5',
   yellow: '#f2b53a',
   green: '#5a9e4f',
-  orange: '#e0932f',
-  red: '#d8452f',
 };
 
-function vertex(i, radiusRatio) {
-  const angle = -Math.PI / 2 + (i * 2 * Math.PI) / 6;
-  const radius = R * radiusRatio;
-  return [CX + radius * Math.cos(angle), CY + radius * Math.sin(angle)];
+// ── SVG dimensions ─────────────────────────────────────────────────────
+// Card width + padding to fit the 400px chart with 24px side padding,
+// plus the sticky-note header and a footer.
+const CARD_W = 460;
+const CARD_PAD = 18;
+const HEADER_H = 64;
+const CHART_AREA_TOP = CARD_PAD + HEADER_H;
+const CHART_AREA_H = 400;
+const FOOTER_H = 32;
+const CARD_H = CARD_PAD + HEADER_H + CHART_AREA_H + FOOTER_H + CARD_PAD;
+
+// The chart SVG content uses viewBox 0 0 400 400, offset inside the card.
+const CHART_OFFSET_X = (CARD_W - 400) / 2;
+const CHART_OFFSET_Y = CHART_AREA_TOP;
+
+function escapeXml(s) {
+  return String(s).replace(/[<>&'\"]/g, (c) => ({
+    '<': '&lt;', '>': '&gt;', '&': '&amp;', "'": '&apos;', '"': '&quot;',
+  }[c]));
 }
 
-function polygonPoints(ratios) {
-  return ratios
-    .map((ratio, i) => {
-      const [x, y] = vertex(i, ratio);
-      return `${x.toFixed(2)},${y.toFixed(2)}`;
+function formatNum(n) {
+  if (n >= 1000) return `${(n / 1000).toFixed(1).replace(/\.0$/, '')}k`;
+  return String(n);
+}
+
+// Convert a rough.js path array to SVG <path> string.
+function pathsToSvg(paths, extra = '') {
+  return paths.map((p) => {
+    const fill = p.fill && p.fill !== 'none' ? p.fill : 'none';
+    return `<path d="${p.d}" stroke="${p.stroke}" stroke-width="${p.strokeWidth}" fill="${fill}" stroke-linecap="round" stroke-linejoin="round"${extra}/>`;
+  }).join('');
+}
+
+function buildChart(scores) {
+  const ratios = AXES.map((a) => scores[a.key] / 100);
+  const overall = Math.round(AXES.reduce((s, a) => s + scores[a.key], 0) / 6);
+  const dataColor = scoreColor(overall);
+
+  // Grid rings (same seeds/options as HexagonChart).
+  const rings = [0.35, 0.7, 1.0].map((ratio, idx) =>
+    polygonPaths(polygonPointArray(Array(6).fill(ratio)), {
+      stroke: COL.grid,
+      strokeWidth: ratio === 1 ? 2 : 1.4,
+      roughness: 1.6,
+      seed: 20 + idx,
     })
-    .join(' ');
-}
+  );
 
-function scoreColor(score) {
-  if (score >= 70) return COLORS.green;
-  if (score >= 40) return COLORS.orange;
-  return COLORS.red;
-}
-
-function roughLine(x1, y1, x2, y2, color, width = 2, opacity = 1) {
-  const dx = x2 - x1;
-  const dy = y2 - y1;
-  const length = Math.hypot(dx, dy) || 1;
-  const nx = -dy / length;
-  const ny = dx / length;
-  return [
-    `<line x1="${x1.toFixed(2)}" y1="${y1.toFixed(2)}" x2="${x2.toFixed(2)}" y2="${y2.toFixed(2)}" stroke="${color}" stroke-width="${width}" opacity="${opacity}" stroke-linecap="round"/>`,
-    `<line x1="${(x1 + nx * 0.8).toFixed(2)}" y1="${(y1 + ny * 0.8).toFixed(2)}" x2="${(x2 + nx * 0.8).toFixed(2)}" y2="${(y2 + ny * 0.8).toFixed(2)}" stroke="${color}" stroke-width="${Math.max(0.8, width * 0.55)}" opacity="${opacity * 0.45}" stroke-linecap="round"/>`,
-  ].join('');
-}
-
-function buildGrid() {
-  const rings = [0.35, 0.7, 1]
-    .map((ratio) => {
-      const points = polygonPoints(Array(6).fill(ratio));
-      return `<polygon points="${points}" fill="none" stroke="${COLORS.grid}" stroke-width="${ratio === 1 ? 2 : 1.4}" opacity="${ratio === 1 ? 0.95 : 0.7}" stroke-linejoin="round"/>`;
-    })
-    .join('');
-
+  // Spokes.
   const spokes = AXES.map((_, i) => {
     const [x, y] = vertex(i, 1);
-    return roughLine(CX, CY, x, y, COLORS.grid, 1.3, 0.75);
-  }).join('');
+    return linePaths(CHART_CX, CHART_CY, x, y, {
+      stroke: COL.grid,
+      strokeWidth: 1.3,
+      roughness: 1.4,
+      seed: 30 + i,
+    });
+  });
 
-  return `${rings}${spokes}`;
-}
+  // Data polygon with hachure fill.
+  const dataPaths = polygonPaths(polygonPointArray(ratios), {
+    stroke: dataColor,
+    strokeWidth: 3.5,
+    roughness: 1.5,
+    bowing: 1.5,
+    fill: dataColor,
+    fillStyle: 'hachure',
+    fillWeight: 2,
+    hachureGap: 6,
+    seed: 42,
+  });
 
-function buildHachure(points, color) {
-  const lines = [];
-  for (let i = -160; i <= 160; i += 10) {
-    lines.push(`<path d="M${CX - R - 30 + i} ${CY + R + 30} L${CX + R + 30 + i} ${CY - R - 30}" stroke="${color}" stroke-width="1.5" opacity="0.22"/>`);
+  // Center badge circle.
+  const badge = circlePaths(CHART_CX, CHART_CY, 52, {
+    stroke: COL.ink,
+    strokeWidth: 2,
+    fill: COL.paperLight,
+    fillStyle: 'solid',
+    roughness: 1.3,
+    seed: 55,
+  });
+
+  // Assemble chart SVG content (no animations — static embed).
+  let chart = '';
+
+  for (const ring of rings) chart += pathsToSvg(ring);
+  for (const spoke of spokes) chart += pathsToSvg(spoke);
+
+  // Data shape: fill paths at opacity 0.9, outline at full.
+  for (const p of dataPaths) {
+    const isFill = !!p.fill && p.fill !== 'none';
+    chart += isFill
+      ? `<path d="${p.d}" stroke="${p.stroke}" stroke-width="${p.strokeWidth}" fill="${p.fill}" fill-opacity="0.9" stroke-linecap="round" stroke-linejoin="round"/>`
+      : `<path d="${p.d}" stroke="${p.stroke}" stroke-width="${p.strokeWidth}" fill="none" stroke-linecap="round" stroke-linejoin="round"/>`;
   }
-  return `<polygon points="${points}" fill="url(#vibe-fill)" stroke="${color}" stroke-width="3.5" stroke-linejoin="round" stroke-linecap="round"/>${lines.join('')}`;
-}
 
-function buildLabels(scores) {
-  return AXES.map((axis, i) => {
+  // Vertex labels + scores.
+  for (let i = 0; i < AXES.length; i++) {
+    const axis = AXES[i];
     const [x, y] = vertex(i, 1);
-    const [labelX, labelY] = vertex(i, 1.3);
+    const [lx, ly] = vertex(i, 1.32);
     const score = scores[axis.key];
     let anchor = 'middle';
-    if (x < CX - 5) anchor = 'end';
-    if (x > CX + 5) anchor = 'start';
-    return `
-      <circle cx="${x.toFixed(2)}" cy="${y.toFixed(2)}" r="4.5" fill="${scoreColor(score)}" stroke="${COLORS.ink}" stroke-width="1.5"/>
-      <text x="${labelX.toFixed(2)}" y="${(labelY - 5).toFixed(2)}" text-anchor="${anchor}" font-family="'Patrick Hand', 'Comic Sans MS', cursive" font-size="16" fill="${COLORS.inkSoft}">${axis.label}</text>
-      <text x="${labelX.toFixed(2)}" y="${(labelY + 16).toFixed(2)}" text-anchor="${anchor}" font-family="'Caveat', cursive" font-size="25" font-weight="700" fill="${scoreColor(score)}">${score}</text>`;
-  }).join('');
+    if (x < CHART_CX - 5) anchor = 'end';
+    else if (x > CHART_CX + 5) anchor = 'start';
+
+    chart += `<circle cx="${x.toFixed(2)}" cy="${y.toFixed(2)}" r="4" fill="${dataColor}"/>`;
+    chart += `<text x="${lx.toFixed(2)}" y="${(ly - 5).toFixed(2)}" text-anchor="${anchor}" font-family="'Patrick Hand', 'Comic Sans MS', cursive" font-size="14" fill="${COL.inkSoft}">${escapeXml(axis.label)}</text>`;
+    chart += `<text x="${lx.toFixed(2)}" y="${(ly + 15).toFixed(2)}" text-anchor="${anchor}" font-family="'Caveat', cursive" font-size="24" font-weight="700" fill="${scoreColor(score)}">${score}</text>`;
+  }
+
+  // Center badge.
+  chart += pathsToSvg(badge);
+  chart += `<text x="${CHART_CX}" y="${CHART_CY - 5}" text-anchor="middle" font-family="'Patrick Hand', 'Comic Sans MS', cursive" font-size="13" fill="${COL.inkSoft}">vibes</text>`;
+  chart += `<text x="${CHART_CX}" y="${CHART_CY + 16}" text-anchor="middle" font-family="'Caveat', cursive" font-size="30" font-weight="700" fill="${dataColor}">${overall}</text>`;
+
+  return chart;
+}
+
+function buildStickyNote(x, y, w, h, bg, rotate, dashedBorder = false) {
+  const border = dashedBorder ? 'stroke-dasharray="5,3"' : '';
+  const shadow = `<rect x="${x + 2}" y="${y + 3}" width="${w}" height="${h}" rx="2" fill="rgba(58,49,40,0.2)"/>`;
+  return `${shadow}<g transform="rotate(${rotate} ${x + w / 2} ${y + h / 2})"><rect x="${x}" y="${y}" width="${w}" height="${h}" rx="2" fill="${bg}" stroke="${COL.ink}" stroke-width="1.5" ${border}/></g>`;
+}
+
+function buildHeader(repo) {
+  let header = '';
+  const top = CARD_PAD + 10;
+
+  // Avatar sticky note (yellow, rotated -4deg).
+  const avatarSize = 40;
+  const avatarPad = 6;
+  const avatarNoteW = avatarSize + avatarPad * 2;
+  const avatarNoteH = avatarSize + avatarPad * 2;
+  const avatarX = CARD_PAD + 8;
+  const avatarY = top;
+
+  if (repo?.avatar) {
+    header += buildStickyNote(avatarX, avatarY, avatarNoteW, avatarNoteH, COL.yellow, -4);
+    const imgX = avatarX + avatarPad;
+    const imgY = avatarY + avatarPad;
+    // Rotate the image too.
+    header += `<g transform="rotate(${-4} ${avatarX + avatarNoteW / 2} ${avatarY + avatarNoteH / 2})"><image href="${escapeXml(repo.avatar)}" x="${imgX}" y="${imgY}" width="${avatarSize}" height="${avatarSize}" preserveAspectRatio="xMidYMid meet"/><rect x="${imgX}" y="${imgY}" width="${avatarSize}" height="${avatarSize}" fill="none" stroke="${COL.ink}" stroke-width="1.5"/></g>`;
+  }
+
+  // Name sticky note (white, dashed border, rotated 1.2deg).
+  const nameText = repo?.name ? escapeXml(repo.name) : 'RepoVibes';
+  // Estimate name width: ~12px per char at 20px font.
+  const nameW = Math.min(220, Math.max(80, nameText.length * 12 + 24));
+  const nameH = 36;
+  const nameX = avatarX + avatarNoteW + 14;
+  const nameY = top + 4;
+  header += buildStickyNote(nameX, nameY, nameW, nameH, '#ffffff', 1.2, true);
+  header += `<g transform="rotate(${1.2} ${nameX + nameW / 2} ${nameY + nameH / 2})"><text x="${nameX + 12}" y="${nameY + 25}" font-family="'Patrick Hand', 'Comic Sans MS', cursive" font-size="20" font-weight="700" fill="${COL.ink}">${nameText}</text></g>`;
+
+  // Star sticky note (green, rotated 2.5deg, right-aligned).
+  const starsText = repo?.stars != null ? `★ ${formatNum(repo.stars)}` : '';
+  if (starsText) {
+    const starW = starsText.length * 12 + 24;
+    const starH = 32;
+    const starX = CARD_W - CARD_PAD - 8 - starW;
+    const starY = top + 8;
+    header += buildStickyNote(starX, starY, starW, starH, COL.green, 2.5);
+    header += `<g transform="rotate(${2.5} ${starX + starW / 2} ${starY + starH / 2})"><text x="${starX + 12}" y="${starY + 22}" font-family="'Patrick Hand', 'Comic Sans MS', cursive" font-size="18" fill="#ffffff">${escapeXml(starsText)}</text></g>`;
+  }
+
+  return header;
 }
 
 export function buildHexagonSVG(scores, repo = null) {
-  const ratios = AXES.map((axis) => scores[axis.key] / 100);
-  const overall = Math.round(AXES.reduce((sum, axis) => sum + scores[axis.key], 0) / AXES.length);
-  const overallColor = scoreColor(overall);
-  const dataPoints = polygonPoints(ratios);
+  const chartContent = buildChart(scores);
+  const headerContent = buildHeader(repo);
+
+  // Card shadow (offset rect, no blur for max compatibility).
+  const shadowRect = `<rect x="${CARD_PAD + 3}" y="${CARD_PAD + 4}" width="${CARD_W - CARD_PAD * 2}" height="${CARD_H - CARD_PAD * 2}" rx="10" fill="rgba(58,49,40,0.18)"/>`;
+  // Card background with slightly irregular border-radius (matches CSS: 10px 8px 12px 6px).
+  const cardRect = `<rect x="${CARD_PAD}" y="${CARD_PAD}" width="${CARD_W - CARD_PAD * 2}" height="${CARD_H - CARD_PAD * 2}" rx="10" fill="${COL.paperLight}" stroke="${COL.ink}" stroke-width="2"/>`;
+  // Lined-paper texture (faint horizontal lines, matches body background).
+  const paperLines = `<rect x="${CARD_PAD}" y="${CARD_PAD}" width="${CARD_W - CARD_PAD * 2}" height="${CARD_H - CARD_PAD * 2}" rx="10" fill="url(#paper-lines)"/>`;
+
   const safeName = repo?.name ? escapeXml(repo.name) : 'RepoVibes';
-  const stars = repo?.stars != null ? `★ ${formatNum(repo.stars)}` : '';
 
-  return `<svg xmlns="http://www.w3.org/2000/svg" width="${WIDTH}" height="${HEIGHT}" viewBox="0 0 ${WIDTH} ${HEIGHT}" role="img" aria-label="RepoVibes score chart for ${safeName}">
+  return `<svg xmlns="http://www.w3.org/2000/svg" width="${CARD_W}" height="${CARD_H}" viewBox="0 0 ${CARD_W} ${CARD_H}" role="img" aria-label="RepoVibes score chart for ${safeName}">
   <defs>
-    <pattern id="paper-dots" width="22" height="22" patternUnits="userSpaceOnUse">
-      <rect width="22" height="22" fill="${COLORS.paperLight}"/>
-      <circle cx="1" cy="1" r="1" fill="${COLORS.ink}" opacity="0.045"/>
+    <pattern id="paper-lines" width="100" height="30" patternUnits="userSpaceOnUse">
+      <rect width="100" height="30" fill="none"/>
+      <line x1="0" y1="30" x2="100" y2="30" stroke="#3d9be5" stroke-width="0.5" opacity="0.08"/>
     </pattern>
-    <pattern id="paper-lines" width="1" height="30" patternUnits="userSpaceOnUse">
-      <rect width="1" height="30" fill="${COLORS.paperLight}"/>
-      <rect width="1" height="1" fill="${COLORS.blue}" opacity="0.08"/>
-    </pattern>
-    <pattern id="vibe-fill" width="12" height="12" patternUnits="userSpaceOnUse" patternTransform="rotate(18)">
-      <rect width="12" height="12" fill="${overallColor}" opacity="0.13"/>
-      <path d="M0 0 V12" stroke="${overallColor}" stroke-width="2" opacity="0.23"/>
-    </pattern>
-    <clipPath id="vibe-clip"><polygon points="${dataPoints}"/></clipPath>
   </defs>
-  <rect x="5" y="5" width="510" height="510" rx="12" fill="${COLORS.paperLight}" stroke="${COLORS.ink}" stroke-width="3"/>
-  <rect x="7" y="7" width="506" height="506" rx="10" fill="url(#paper-dots)"/>
-  <rect x="7" y="7" width="506" height="506" rx="10" fill="url(#paper-lines)"/>
-  <path d="M24 78 C 130 74, 390 82, 496 77" fill="none" stroke="${COLORS.blue}" stroke-width="1.5" opacity="0.3"/>
-  <text x="26" y="48" font-family="'Caveat', cursive" font-size="29" font-weight="700" fill="${COLORS.ink}">${safeName}</text>
-  ${stars ? `<text x="494" y="48" text-anchor="end" font-family="'Patrick Hand', cursive" font-size="20" fill="${COLORS.green}">${escapeXml(stars)}</text>` : ''}
-  ${buildGrid()}
-  <g clip-path="url(#vibe-clip)">
-    ${buildHachure(dataPoints, overallColor)}
+  ${shadowRect}
+  ${cardRect}
+  ${paperLines}
+  ${headerContent}
+  <g transform="translate(${CHART_OFFSET_X}, ${CHART_OFFSET_Y})">
+    ${chartContent}
   </g>
-  ${buildLabels(scores)}
-  <circle cx="${CX}" cy="${CY}" r="31" fill="${COLORS.paperLight}" stroke="${COLORS.ink}" stroke-width="2.5"/>
-  <circle cx="${CX + 1}" cy="${CY - 1}" r="30" fill="none" stroke="${COLORS.ink}" stroke-width="1" opacity="0.45"/>
-  <text x="${CX}" y="${CY - 5}" text-anchor="middle" font-family="'Patrick Hand', cursive" font-size="15" fill="${COLORS.inkSoft}">vibes</text>
-  <text x="${CX}" y="${CY + 19}" text-anchor="middle" font-family="'Caveat', cursive" font-size="31" font-weight="700" fill="${overallColor}">${overall}</text>
-  <text x="260" y="496" text-anchor="middle" font-family="'Patrick Hand', cursive" font-size="16" fill="${COLORS.inkSoft}">checked by RepoVibes</text>
+  <text x="${CARD_W / 2}" y="${CARD_H - 12}" text-anchor="middle" font-family="'Patrick Hand', 'Comic Sans MS', cursive" font-size="14" fill="${COL.inkSoft}">checked by RepoVibes</text>
 </svg>`;
-}
-
-function escapeXml(value) {
-  return String(value).replace(/[<>&'\"]/g, (character) => ({
-    '<': '&lt;',
-    '>': '&gt;',
-    '&': '&amp;',
-    "'": '&apos;',
-    '"': '&quot;',
-  }[character]));
-}
-
-function formatNum(value) {
-  if (value >= 1000) return `${(value / 1000).toFixed(1).replace(/\.0$/, '')}k`;
-  return String(value);
 }

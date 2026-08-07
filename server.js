@@ -40,6 +40,7 @@ app.get('/api/hexagon/:owner/:repo.svg', async (req, res) => {
     const svg = buildHexagonSVG(scores, {
       name: data.name,
       stars: data.stars,
+      avatar: data.avatar,
     });
 
     res.setHeader('Content-Type', 'image/svg+xml');

@@ -28,7 +28,7 @@ export default async function handler(req, res) {
   try {
     const data = await fetchRepoData(owner, cleanRepo);
     const scores = computeScores(data);
-    const svg = buildHexagonSVG(scores, { name: data.name, stars: data.stars });
+    const svg = buildHexagonSVG(scores, { name: data.name, stars: data.stars, avatar: data.avatar });
 
     res.setHeader('Content-Type', 'image/svg+xml');
     res.setHeader('Cache-Control', 'public, max-age=3600, s-maxage=3600');
