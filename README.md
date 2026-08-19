@@ -2,8 +2,6 @@
 
 ![RepoVibes Banner](./public/screenshots/banner.png)
 
-# **RepoVibes**
-
 ### *Check the vibes of any public GitHub repo*
 
 [![Vercel](https://img.shields.io/badge/vercel-%23000000.svg?style=for-the-badge&logo=vercel&logoColor=white)](https://repovibes.vercel.app)
