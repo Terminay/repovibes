@@ -260,7 +260,6 @@ export function buildHexagonSVG(scores, repo = null) {
   <defs>
     <style>
       <![CDATA[
-      @import url('https://fonts.googleapis.com/css2?family=Caveat:wght@500;600;700&family=Kalam:wght@400;700&family=Patrick+Hand&display=swap');
       :root {
         --rv-paper: #f6efdd;
         --rv-paper-light: #fffaf0;

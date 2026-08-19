@@ -1110,6 +1110,126 @@ body {
 }
 
 /* ═══════════════════════════════════════════════════
+   Dark mode
+   ═══════════════════════════════════════════════════ */
+
+html[data-theme="dark"] {
+  --paper: #1a1814;
+  --paper-2: #252220;
+  --paper-tint: #2a2724;
+  --ink: #e8dfd0;
+  --ink-soft: #a89b87;
+  --ink-muted: #7a6f5e;
+  --text-placeholder: #8a7d6a;
+  --crayon-red: #e85d4a;
+  --crayon-blue: #5aadf0;
+  --crayon-yellow: #c4901f;
+  --crayon-green: #4a8a3f;
+  --crayon-orange: #c4802a;
+  --crayon-purple: #9a7de0;
+  --score-high: #4a8a3f;
+  --score-mid: #c4802a;
+  --score-low: #e85d4a;
+  --error: #e85d4a;
+  --error-bg: #3a2520;
+  --shadow-sm: 2px 2px 0 rgba(0, 0, 0, 0.3);
+  --shadow-md: 3px 4px 0 rgba(0, 0, 0, 0.35);
+  --shadow-lg: 4px 5px 0 rgba(0, 0, 0, 0.4);
+}
+
+html[data-theme="dark"] body {
+  background-image:
+    radial-gradient(circle at 1px 1px, rgba(232, 223, 208, 0.05) 1px, transparent 0),
+    linear-gradient(rgba(61, 155, 229, 0.04) 1px, transparent 1px);
+}
+
+html[data-theme="dark"] .readme-chrome {
+  background: #2a2724;
+}
+
+html[data-theme="dark"] .readme-h1,
+html[data-theme="dark"] .readme-h2 {
+  border-bottom-color: #3a3530;
+}
+
+html[data-theme="dark"] .report-score-bar-wrap {
+  background: #3a3530;
+}
+
+html[data-theme="dark"] .mono-inline {
+  background: #3a3530;
+  border-color: rgba(232, 223, 208, 0.2);
+}
+
+html[data-theme="dark"] .code-block {
+  background-image: repeating-linear-gradient(
+    var(--paper-2) 0 26px,
+    #2a3540 26px 27px
+  );
+}
+
+html[data-theme="dark"] .name-note {
+  background: var(--paper-2);
+}
+
+/* Smooth theme transitions */
+body,
+.paper-card,
+.report-card,
+.input-wrap,
+.code-block,
+.readme-mock,
+.readme-chrome,
+.step-card,
+.check-item,
+.sketchy-box,
+button,
+input,
+.report-score-bar-wrap,
+.mono-inline,
+.name-note {
+  transition: background-color 0.35s ease, color 0.2s ease, border-color 0.35s ease, box-shadow 0.35s ease;
+}
+
+/* ── Theme toggle button ─────────────────────────────────────────── */
+.theme-toggle {
+  position: fixed;
+  top: 18px;
+  right: 18px;
+  z-index: 100;
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  border: 2px solid var(--ink);
+  background: var(--paper-2);
+  color: var(--ink);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: var(--shadow-sm);
+  transition: transform 0.2s ease, background-color 0.35s ease, border-color 0.35s ease;
+}
+
+.theme-toggle:hover {
+  transform: scale(1.08) rotate(-4deg);
+}
+
+.theme-toggle:active {
+  transform: scale(0.92);
+}
+
+.theme-toggle svg {
+  width: 22px;
+  height: 22px;
+  transition: transform 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.theme-toggle:hover svg {
+  transform: rotate(12deg);
+}
+
+/* ═══════════════════════════════════════════════════
    Responsive
    ═══════════════════════════════════════════════════ */
 

@@ -182,7 +182,7 @@ function TornDivider() {
   return <div className="torn-divider" aria-hidden="true" />;
 }
 
-export default function Landing() {
+export default function Landing({ isDark = false }) {
   return (
     <div className="landing">
       {/* ── How it works ──────────────────────────────────────── */}
@@ -256,7 +256,7 @@ export default function Landing() {
               <div className="sticky-note star-note">&#9733; 228k</div>
             </div>
             <div className="chart-area example-chart-area">
-              <HexagonChart scores={EXAMPLE_SCORES} />
+              <HexagonChart scores={EXAMPLE_SCORES} isDark={isDark} />
             </div>
           </div>
 
@@ -298,7 +298,7 @@ export default function Landing() {
             </p>
             <div className="readme-h2">Project vibes</div>
             <div className="readme-badge">
-              <HexagonChart scores={EXAMPLE_SCORES} />
+              <HexagonChart scores={EXAMPLE_SCORES} isDark={isDark} />
             </div>
             <p className="readme-text muted">
               — Updated automatically every time someone loads your README.

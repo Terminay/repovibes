@@ -16,6 +16,19 @@ function polygonPointArray(ratios) {
   return ratios.map((ratio, i) => vertex(i, ratio));
 }
 
+const PALETTE = {
+  light: {
+    grid: '#c9bda0',
+    badgeStroke: '#3a3128',
+    badgeFill: '#fffaf0',
+  },
+  dark: {
+    grid: '#5c5346',
+    badgeStroke: '#d4c9b8',
+    badgeFill: '#2a2520',
+  },
+};
+
 // Crayon colors keyed to score bands.
 function scoreColor(score) {
   if (score >= 70) return '#5a9e4f'; // grass green
@@ -26,22 +39,23 @@ function scoreColor(score) {
 // Hand-drawn radar/hexagon chart. Each grid ring, spoke, and the data shape
 // is generated with rough.js. The data outline "draws itself" in, spokes
 // sketch one at a time, and vertex scores bounce in staggered.
-export default function HexagonChart({ scores }) {
+export default function HexagonChart({ scores, isDark = false }) {
   const ratios = useMemo(() => AXES.map((a) => scores[a.key] / 100), [scores]);
   const overall = Math.round(AXES.reduce((s, a) => s + scores[a.key], 0) / 6);
   const dataColor = scoreColor(overall);
+  const theme = isDark ? PALETTE.dark : PALETTE.light;
 
   // Grid rings (static, faint crayon).
   const rings = useMemo(() => {
     return [0.35, 0.7, 1.0].map((ratio, idx) =>
       polygonPaths(polygonPointArray(Array(6).fill(ratio)), {
-        stroke: '#c9bda0',
+        stroke: theme.grid,
         strokeWidth: ratio === 1 ? 2 : 1.4,
         roughness: 1.6,
         seed: 20 + idx,
       })
     );
-  }, []);
+  }, [theme]);
 
   // Spokes from center to each outer vertex.
   const spokes = useMemo(
@@ -49,13 +63,13 @@ export default function HexagonChart({ scores }) {
       AXES.map((_, i) => {
         const [x, y] = vertex(i, 1);
         return linePaths(CX, CY, x, y, {
-          stroke: '#c9bda0',
+          stroke: theme.grid,
           strokeWidth: 1.3,
           roughness: 1.4,
           seed: 30 + i,
         });
       }),
-    []
+    [theme]
   );
 
   // The data polygon — filled with a crayon hachure scribble.
@@ -77,8 +91,8 @@ export default function HexagonChart({ scores }) {
 
   // Center "vibes" badge circle.
   const badge = useMemo(
-    () => circlePaths(CX, CY, 52, { stroke: '#3a3128', strokeWidth: 2, fill: '#fffaf0', fillStyle: 'solid', roughness: 1.3, seed: 55 }),
-    []
+    () => circlePaths(CX, CY, 52, { stroke: theme.badgeStroke, strokeWidth: 2, fill: theme.badgeFill, fillStyle: 'solid', roughness: 1.3, seed: 55 }),
+    [theme]
   );
 
   return (

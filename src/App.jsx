@@ -3,6 +3,7 @@ import HexagonChart from './components/HexagonChart.jsx';
 import SketchyBox from './components/SketchyBox.jsx';
 import ScribbleLoader from './components/ScribbleLoader.jsx';
 import Landing from './components/Landing.jsx';
+import { useTheme } from './context/ThemeContext.jsx';
 import { AXES } from './lib/scoring.js';
 
 function scoreColor(score) {
@@ -51,6 +52,7 @@ function Wiggle({ text, className = '' }) {
 }
 
 export default function App() {
+  const { isDark, toggle } = useTheme();
   const [input, setInput] = useState('');
   const [state, setState] = useState('idle'); // idle | loading | loaded | error
   const [result, setResult] = useState(null);
@@ -107,6 +109,31 @@ export default function App() {
 
   return (
     <div className="app">
+      <button
+        className="theme-toggle"
+        onClick={toggle}
+        aria-label={isDark ? 'Switch to light mode' : 'Switch to dark mode'}
+        title={isDark ? 'Switch to light mode' : 'Switch to dark mode'}
+      >
+        {isDark ? (
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <circle cx="12" cy="12" r="5" />
+            <line x1="12" y1="1" x2="12" y2="3" />
+            <line x1="12" y1="21" x2="12" y2="23" />
+            <line x1="4.22" y1="4.22" x2="5.64" y2="5.64" />
+            <line x1="18.36" y1="18.36" x2="19.78" y2="19.78" />
+            <line x1="1" y1="12" x2="3" y2="12" />
+            <line x1="21" y1="12" x2="23" y2="12" />
+            <line x1="4.22" y1="19.78" x2="5.64" y2="18.36" />
+            <line x1="18.36" y1="5.64" x2="19.78" y2="4.22" />
+          </svg>
+        ) : (
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z" />
+          </svg>
+        )}
+      </button>
+
       <header className="header container container-narrow">
         <h1>
           <Wiggle text="repo" />
@@ -123,7 +150,7 @@ export default function App() {
           <SketchyBox
             className={`input-wrap ${inputFocused ? 'is-focused' : ''}`}
             contentClassName="input-inner"
-            color={inputFocused ? '#3d9be5' : '#3a3128'}
+            color={inputFocused ? '#3d9be5' : isDark ? '#d4c9b8' : '#3a3128'}
             strokeWidth={2.5}
             roughness={inputFocused ? 2 : 1.6}
             seed={3}
@@ -218,7 +245,7 @@ export default function App() {
                 </div>
               </div>
               <div className="report-chart">
-                <HexagonChart scores={result.scores} repo={result.data} />
+                <HexagonChart scores={result.scores} repo={result.data} isDark={isDark} />
               </div>
 
               {/* Score breakdown */}
@@ -281,7 +308,7 @@ export default function App() {
         )}
       </div>
 
-      <Landing />
+      <Landing isDark={isDark} />
     </div>
   );
 }
