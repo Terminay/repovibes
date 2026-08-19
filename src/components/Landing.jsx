@@ -313,7 +313,7 @@ export default function Landing() {
         <div className="footer-links">
           <a
             className="footer-link"
-            href="https://github.com"
+            href="https://github.com/Terminay/repovibes"
             target="_blank"
             rel="noopener noreferrer"
           >
