@@ -1,7 +1,6 @@
 import React, { useState, useCallback } from 'react';
 import HexagonChart from './components/HexagonChart.jsx';
 import SketchyBox from './components/SketchyBox.jsx';
-import Doodles from './components/Doodles.jsx';
 import ScribbleLoader from './components/ScribbleLoader.jsx';
 import Landing from './components/Landing.jsx';
 import { AXES } from './lib/scoring.js';
@@ -66,7 +65,7 @@ export default function App() {
     const parsed = parseRepoInput(input);
     if (!parsed) {
       setState('error');
-      setError('enter a github url or owner/repo — e.g. facebook/react');
+      setError('Enter a GitHub URL or owner/repo — e.g. facebook/react');
       return;
     }
 
@@ -76,14 +75,14 @@ export default function App() {
       const res = await fetch(`/api/scores/${parsed.owner}/${parsed.repo}`);
       if (!res.ok) {
         const body = await res.json().catch(() => ({}));
-        throw new Error(body.error || `failed (${res.status})`);
+        throw new Error(body.error || `Failed (${res.status})`);
       }
       const { data, scores } = await res.json();
       setResult({ data, scores });
       setState('loaded');
     } catch (err) {
       setState('error');
-      setError(err.message || 'something went wrong');
+      setError(err.message || 'Something went wrong');
     }
   }, [input]);
 
@@ -102,47 +101,50 @@ export default function App() {
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
     } catch {
-      setCopyError('copy is unavailable here — select the snippet manually');
+      setCopyError('Copy is unavailable here — select the snippet manually');
     }
   }, [embedSnippet]);
 
   return (
     <div className="app">
-      <Doodles />
-
-      <header className="header">
+      <header className="header container container-narrow">
         <h1>
           <Wiggle text="repo" />
           <Wiggle text="vibes" className="vibe" />
         </h1>
-        <p>check the vibes of any public github repo</p>
+        <p>Check the vibes of any public GitHub repo</p>
       </header>
 
-      <form className="input-form" onSubmit={handleSubmit}>
-        <SketchyBox
-          className={`input-wrap ${inputFocused ? 'is-focused' : ''}`}
-          contentClassName="input-inner"
-          color={inputFocused ? '#3d9be5' : '#3a3128'}
-          strokeWidth={2.5}
-          roughness={inputFocused ? 2 : 1.6}
-          seed={3}
-          redrawKey={redrawKey}
-        >
-          <input
-            type="text"
-            value={input}
-            onChange={(e) => setInput(e.target.value)}
-            onFocus={() => {
-              setInputFocused(true);
-              setRedrawKey((k) => k + 1);
-            }}
-            onBlur={() => setInputFocused(false)}
-            placeholder="github.com/owner/repo  or  owner/repo"
-            autoFocus
-            spellCheck="false"
-            aria-label="GitHub repository URL or owner/repo"
-          />
-        </SketchyBox>
+      <form className="input-form container container-narrow" onSubmit={handleSubmit}>
+        <div className="input-group">
+          <label htmlFor="repo-input" className="input-label">
+            Paste a GitHub repo
+          </label>
+          <SketchyBox
+            className={`input-wrap ${inputFocused ? 'is-focused' : ''}`}
+            contentClassName="input-inner"
+            color={inputFocused ? '#3d9be5' : '#3a3128'}
+            strokeWidth={2.5}
+            roughness={inputFocused ? 2 : 1.6}
+            seed={3}
+            redrawKey={redrawKey}
+          >
+            <input
+              id="repo-input"
+              type="text"
+              value={input}
+              onChange={(e) => setInput(e.target.value)}
+              onFocus={() => {
+                setInputFocused(true);
+                setRedrawKey((k) => k + 1);
+              }}
+              onBlur={() => setInputFocused(false)}
+              placeholder="github.com/owner/repo  or  owner/repo"
+              autoFocus
+              spellCheck="false"
+            />
+          </SketchyBox>
+        </div>
 
         <div className="cta-wrap">
           <SketchyBox
@@ -158,7 +160,7 @@ export default function App() {
             seed={8}
           >
             <button type="submit" disabled={state === 'loading'}>
-              {state === 'loading' ? 'checking…' : 'check the vibes!'}
+              {state === 'loading' ? 'Checking…' : 'Check the vibes!'}
             </button>
           </SketchyBox>
           <svg className="cta-arrow" viewBox="0 0 80 60" aria-hidden="true">
@@ -180,98 +182,104 @@ export default function App() {
         </div>
       </form>
 
-      {state === 'error' && (
-        <div className="paper-card error-card">
-          <div className="error-state">
-            <div className="error-icon">!?</div>
-            <div className="error-title">couldn&apos;t check that repo</div>
-            <div className="error-msg">{error}</div>
-          </div>
-        </div>
-      )}
-
-      {state === 'loading' && (
-        <div className="paper-card">
-          <div className="chart-area">
-            <div className="loading-state">
-              <ScribbleLoader />
-              <div className="loading-text">scribbling your vibes…</div>
+      <div className="container container-wide">
+        {state === 'error' && (
+          <div className="paper-card error-card">
+            <div className="error-state">
+              <div className="error-icon">!?</div>
+              <div className="error-title">Couldn&apos;t check that repo</div>
+              <div className="error-msg">{error}</div>
             </div>
           </div>
-        </div>
-      )}
+        )}
 
-      {state === 'loaded' && result && (
-        <>
+        {state === 'loading' && (
           <div className="paper-card">
-            <div className="repo-info">
-              <div className="sticky-note avatar-note">
-                <img src={result.data.avatar || '/placeholder.svg'} alt="" />
-              </div>
-              <div className="sticky-note name-note">{result.data.name}</div>
-              <div className="sticky-note star-note">★ {formatNum(result.data.stars)}</div>
-            </div>
             <div className="chart-area">
-              <HexagonChart scores={result.scores} repo={result.data} />
+              <div className="loading-state">
+                <ScribbleLoader />
+                <div className="loading-text">Scribbling your vibes…</div>
+              </div>
             </div>
           </div>
+        )}
 
-          {/* Score breakdown */}
-          <div className="score-details">
-            <h3>score breakdown</h3>
-            <div className="score-list">
-              {AXES.map((axis) => {
-                const score = result.scores[axis.key];
-                return (
-                  <div key={axis.key} className="score-item">
-                    <div style={{ flex: 1 }}>
-                      <div className="label">{axis.label}</div>
-                      <div className="score-bar">
+        {state === 'loaded' && result && (
+          <>
+            <div className="report-card">
+              <h2 className="report-heading">Vibe Report</h2>
+              <div className="repo-info">
+                <div className="sticky-note avatar-note">
+                  <img src={result.data.avatar || '/placeholder.svg'} alt="" />
+                </div>
+                <div className="sticky-note name-note">{result.data.name}</div>
+                <div className="sticky-note star-note">
+                  &#9733; {formatNum(result.data.stars)}
+                </div>
+              </div>
+              <div className="report-chart">
+                <HexagonChart scores={result.scores} repo={result.data} />
+              </div>
+
+              {/* Score breakdown */}
+              <div className="report-scores">
+                <h3 className="report-scores-title">Score breakdown</h3>
+                <div className="report-score-list">
+                  {AXES.map((axis) => {
+                    const score = result.scores[axis.key];
+                    return (
+                      <div key={axis.key} className="report-score-item">
+                        <div className="report-score-label">{axis.label}</div>
+                        <div className="report-score-bar-wrap">
+                          <div
+                            className="report-score-bar-fill"
+                            style={{ width: `${score}%`, background: scoreColor(score) }}
+                          />
+                        </div>
                         <div
-                          className="score-bar-fill"
-                          style={{ width: `${score}%`, background: scoreColor(score) }}
-                        />
+                          className="report-score-value"
+                          style={{ color: scoreColor(score) }}
+                        >
+                          {score}
+                        </div>
                       </div>
-                    </div>
-                    <div className="value" style={{ color: scoreColor(score) }}>
-                      {score}
-                    </div>
-                  </div>
-                );
-              })}
+                    );
+                  })}
+                </div>
+              </div>
             </div>
-          </div>
 
-          {/* Embed snippet */}
-          <div className="embed-section">
-            <div className="embed-label">markdown embed snippet</div>
-            <div className="code-block">
-              <span className="tape tape-left" aria-hidden="true" />
-              <span className="tape tape-right" aria-hidden="true" />
-              <code>{embedSnippet}</code>
-              <button
-                className={`copy-btn ${copied ? 'copied' : ''}`}
-                onClick={handleCopy}
-              >
-                {copied ? 'copied!' : 'copy'}
-              </button>
+            {/* Embed snippet */}
+            <div className="embed-section">
+              <div className="embed-label">Markdown embed snippet</div>
+              <div className="code-block">
+                <span className="tape tape-left" aria-hidden="true" />
+                <span className="tape tape-right" aria-hidden="true" />
+                <code>{embedSnippet}</code>
+                <button
+                  className={`copy-btn ${copied ? 'copied' : ''}`}
+                  onClick={handleCopy}
+                >
+                  {copied ? 'Copied!' : 'Copy'}
+                </button>
+              </div>
+              <div className={`embed-hint ${copyError ? 'is-error' : ''}`}>
+                {copyError || 'Paste this in your README — the SVG renders directly in GitHub'}
+              </div>
             </div>
-            <div className={`embed-hint ${copyError ? 'is-error' : ''}`}>
-              {copyError || 'paste this in your README — the svg renders directly in github'}
-            </div>
-          </div>
-        </>
-      )}
+          </>
+        )}
 
-      {state === 'idle' && (
-        <div className="paper-card">
-          <div className="chart-area">
-            <div className="empty-state">
-              paste a repo url above to see its vibes
+        {state === 'idle' && (
+          <div className="paper-card">
+            <div className="chart-area">
+              <div className="empty-state">
+                Paste a repo URL above to see its vibes
+              </div>
             </div>
           </div>
-        </div>
-      )}
+        )}
+      </div>
 
       <Landing />
     </div>

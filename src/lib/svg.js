@@ -67,7 +67,7 @@ const CARD_PAD = 18;
 const HEADER_H = 64;
 const CHART_AREA_TOP = CARD_PAD + HEADER_H;
 const CHART_AREA_H = 400;
-const FOOTER_H = 32;
+const FOOTER_H = 42;
 const CARD_H = CARD_PAD + HEADER_H + CHART_AREA_H + FOOTER_H + CARD_PAD;
 
 // The chart SVG content uses viewBox 0 0 400 400, offset inside the card.
@@ -207,13 +207,13 @@ function buildHeader(repo) {
 
   // Name sticky note (white, dashed border, rotated 1.2deg).
   const rawName = repo?.name ? String(repo.name) : 'RepoVibes';
-  // Estimate name width: ~12px per char at 20px font. Cap at 220px and
-  // truncate with ellipsis so long names don't overflow the note.
-  const maxNameW = 220;
-  const maxChars = Math.floor((maxNameW - 24) / 12);
+  // Estimate name width: ~10px per char at 20px font (Patrick Hand is narrow).
+  // Cap at 280px and truncate with ellipsis so long names don't overflow.
+  const maxNameW = 280;
+  const maxChars = Math.floor((maxNameW - 24) / 10);
   const displayName = rawName.length > maxChars ? `${rawName.slice(0, maxChars - 1)}…` : rawName;
   const nameText = escapeXml(displayName);
-  const nameW = Math.min(maxNameW, Math.max(80, displayName.length * 12 + 24));
+  const nameW = Math.min(maxNameW, Math.max(80, displayName.length * 10 + 24));
   const nameH = 36;
   const nameX = avatarX + avatarNoteW + 14;
   const nameY = top + 4;
@@ -266,6 +266,6 @@ export function buildHexagonSVG(scores, repo = null) {
   <g transform="translate(${CHART_OFFSET_X}, ${CHART_OFFSET_Y})">
     ${chartContent}
   </g>
-  <text x="${CARD_W / 2}" y="${CARD_H - 12}" text-anchor="middle" font-family="'Patrick Hand', 'Comic Sans MS', cursive" font-size="14" fill="${COL.inkSoft}">checked by RepoVibes</text>
+  <text x="${CARD_W / 2}" y="${CARD_H - CARD_PAD - 10}" text-anchor="middle" font-family="'Patrick Hand', 'Comic Sans MS', cursive" font-size="14" fill="${COL.inkSoft}">checked by RepoVibes</text>
 </svg>`;
 }

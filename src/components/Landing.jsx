@@ -36,26 +36,56 @@ function SketchCircle({ children, color = '#3a3128', fill = '#fffaf0', seed = 1,
   );
 }
 
+// A hand-drawn arrow connecting flow steps.
+function StepArrow() {
+  return (
+    <svg
+      className="step-arrow"
+      width="40"
+      height="24"
+      viewBox="0 0 40 24"
+      fill="none"
+      aria-hidden="true"
+    >
+      <path
+        d="M4 12 Q 15 6, 28 12"
+        stroke="currentColor"
+        strokeWidth="2.5"
+        strokeLinecap="round"
+        fill="none"
+      />
+      <path
+        d="M24 8 L 28 12 L 24 16"
+        stroke="currentColor"
+        strokeWidth="2.5"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        fill="none"
+      />
+    </svg>
+  );
+}
+
 const STEPS = [
   {
     n: '1',
     color: '#d8452f',
-    title: 'paste any public repo url',
-    body: 'drop in a github link or just owner/repo — no login, no setup, nothing to install.',
+    title: 'Paste any public repo URL',
+    body: 'Drop in a GitHub link or just owner/repo — no login, no setup, nothing to install.',
     rot: '-1.4deg',
   },
   {
     n: '2',
     color: '#3d9be5',
-    title: 'we check activity, community, docs & more',
-    body: 'we read the public github signals and sketch out six honest vibe scores.',
+    title: 'We check activity, community, docs & more',
+    body: 'We read the public GitHub signals and sketch out six honest vibe scores.',
     rot: '1.2deg',
   },
   {
     n: '3',
     color: '#5a9e4f',
-    title: 'get a shareable hexagon + embed it',
-    body: 'copy one line of markdown and the live hexagon renders right inside your readme.',
+    title: 'Get a shareable hexagon + embed it',
+    body: 'Copy one line of markdown and the live hexagon renders right inside your README.',
     rot: '-0.8deg',
   },
 ];
@@ -65,43 +95,73 @@ const CHECKS = [
     key: 'activity',
     label: 'Activity',
     color: '#d8452f',
-    desc: 'how recently and how often code actually gets pushed.',
-    rot: '-2deg',
+    desc: 'How recently and how often code actually gets pushed.',
+    icon: (
+      <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M2 12h4l3-8 4 16 3-8h4" />
+      </svg>
+    ),
   },
   {
     key: 'community',
     label: 'Community',
     color: '#3d9be5',
-    desc: 'how many different people pitch in as contributors.',
-    rot: '1.5deg',
+    desc: 'How many different people pitch in as contributors.',
+    icon: (
+      <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
+        <circle cx="9" cy="7" r="4" />
+        <path d="M23 21v-2a4 4 0 0 0-3-3.87" />
+        <path d="M16 3.13a4 4 0 0 1 0 7.75" />
+      </svg>
+    ),
   },
   {
     key: 'responsiveness',
     label: 'Responsiveness',
     color: '#e0932f',
-    desc: 'how well maintainers keep up with and close issues.',
-    rot: '-1deg',
+    desc: 'How well maintainers keep up with and close issues.',
+    icon: (
+      <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <circle cx="12" cy="12" r="10" />
+        <polyline points="12 6 12 12 16 14" />
+      </svg>
+    ),
   },
   {
     key: 'documentation',
     label: 'Documentation',
     color: '#5a9e4f',
-    desc: 'readme depth, a license, a description and topics.',
-    rot: '2deg',
+    desc: 'README depth, a license, a description and topics.',
+    icon: (
+      <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20" />
+        <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z" />
+      </svg>
+    ),
   },
   {
     key: 'stability',
     label: 'Stability',
     color: '#7a5cc0',
-    desc: 'tagged releases and how fresh the latest one is.',
-    rot: '-1.6deg',
+    desc: 'Tagged releases and how fresh the latest one is.',
+    icon: (
+      <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z" />
+        <line x1="7" y1="7" x2="7.01" y2="7" />
+      </svg>
+    ),
   },
   {
     key: 'popularity',
     label: 'Popularity',
     color: '#e5533d',
-    desc: 'stars, forks and how fast they are growing over time.',
-    rot: '1.1deg',
+    desc: 'Stars, forks and how fast they are growing over time.',
+    icon: (
+      <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
+      </svg>
+    ),
   },
 ];
 
@@ -125,52 +185,54 @@ function TornDivider() {
 export default function Landing() {
   return (
     <div className="landing">
-      {/* ── HOW IT WORKS ─────────────────────────────── */}
+      {/* ── How it works ──────────────────────────────────────── */}
       <TornDivider />
-      <section className="section" aria-labelledby="how-title">
+      <section className="section container" aria-labelledby="how-title">
         <h2 id="how-title" className="section-title">
-          how it works
+          How it works
         </h2>
-        <p className="section-sub">three scribbles and you&apos;re done</p>
-        <div className="steps-grid">
+        <p className="section-sub">Three scribbles and you&apos;re done</p>
+        <div className="steps-flow">
           {STEPS.map((s, i) => (
-            <SketchyBox
-              key={s.n}
-              className="step-card"
-              contentClassName="step-inner"
-              color={s.color}
-              strokeWidth={2.4}
-              roughness={1.8}
-              seed={i + 12}
-              style={{ '--rot': s.rot }}
-            >
-              <SketchCircle color={s.color} seed={i + 40} size={58}>
-                <span className="step-num" style={{ color: s.color }}>
-                  {s.n}
-                </span>
-              </SketchCircle>
-              <h3 className="step-title">{s.title}</h3>
-              <p className="step-body">{s.body}</p>
-            </SketchyBox>
+            <React.Fragment key={s.n}>
+              {i > 0 && <StepArrow />}
+              <SketchyBox
+                className="step-card"
+                contentClassName="step-inner"
+                color={s.color}
+                strokeWidth={2.4}
+                roughness={1.8}
+                seed={i + 12}
+                style={{ '--rot': s.rot }}
+              >
+                <SketchCircle color={s.color} seed={i + 40} size={58}>
+                  <span className="step-num" style={{ color: s.color }}>
+                    {s.n}
+                  </span>
+                </SketchCircle>
+                <h3 className="step-title">{s.title}</h3>
+                <p className="step-body">{s.body}</p>
+              </SketchyBox>
+            </React.Fragment>
           ))}
         </div>
       </section>
 
-      {/* ── WHAT WE CHECK ────────────────────────────── */}
+      {/* ── What we check ──────────────────────────────────── */}
       <TornDivider />
-      <section className="section" aria-labelledby="check-title">
+      <section className="section container" aria-labelledby="check-title">
         <h2 id="check-title" className="section-title">
-          what we check
+          What we check
         </h2>
-        <p className="section-sub">six honest little vibe-o-meters</p>
+        <p className="section-sub">Six honest little vibe-o-meters</p>
         <div className="checks-grid">
-          {CHECKS.map((c, i) => (
+          {CHECKS.map((c) => (
             <div
               key={c.key}
-              className="check-badge"
-              style={{ '--rot': c.rot, '--accent': c.color }}
+              className="check-item"
+              style={{ '--accent': c.color }}
             >
-              <span className="check-dot" style={{ background: c.color }} aria-hidden="true" />
+              <div className="check-icon">{c.icon}</div>
               <h3 className="check-label">{c.label}</h3>
               <p className="check-desc">{c.desc}</p>
             </div>
@@ -178,20 +240,20 @@ export default function Landing() {
         </div>
       </section>
 
-      {/* ── EXAMPLE ──────────────────────────────────── */}
+      {/* ── Example ────────────────────────────────────────────── */}
       <TornDivider />
-      <section className="section" aria-labelledby="example-title">
+      <section className="section container" aria-labelledby="example-title">
         <h2 id="example-title" className="section-title">
-          see it on a real repo
+          See it on a real repo
         </h2>
         <p className="section-sub">
-          here&apos;s <span className="mono-inline">{EXAMPLE_REPO}</span> — this is exactly what you get
+          Here&apos;s <span className="mono-inline">{EXAMPLE_REPO}</span> — this is exactly what you get
         </p>
         <div className="example-grid">
           <div className="paper-card example-chart">
             <div className="repo-info">
               <div className="sticky-note name-note">{EXAMPLE_REPO}</div>
-              <div className="sticky-note star-note">★ 228k</div>
+              <div className="sticky-note star-note">&#9733; 228k</div>
             </div>
             <div className="chart-area example-chart-area">
               <HexagonChart scores={EXAMPLE_SCORES} />
@@ -199,27 +261,27 @@ export default function Landing() {
           </div>
 
           <div className="example-embed">
-            <div className="embed-label">drop this in your readme</div>
+            <div className="embed-label">Drop this in your README</div>
             <div className="code-block">
               <span className="tape tape-left" aria-hidden="true" />
               <span className="tape tape-right" aria-hidden="true" />
               <code>{EXAMPLE_SNIPPET}</code>
             </div>
             <p className="embed-hint">
-              it&apos;s a plain svg — github renders it inline, no scripts, no iframes.
+              It&apos;s a plain SVG — GitHub renders it inline, no scripts, no iframes.
             </p>
           </div>
         </div>
       </section>
 
-      {/* ── EMBED IT ANYWHERE ────────────────────────── */}
+      {/* ── Embed it anywhere ──────────────────────────────── */}
       <TornDivider />
-      <section className="section" aria-labelledby="embed-title">
+      <section className="section container" aria-labelledby="embed-title">
         <h2 id="embed-title" className="section-title">
-          embed it anywhere
+          Embed it anywhere
         </h2>
         <p className="section-sub">
-          your readme is the first thing people see — give it some vibes
+          Your README is the first thing people see — give it some vibes
         </p>
 
         <div className="readme-mock">
@@ -232,22 +294,22 @@ export default function Landing() {
           <div className="readme-body">
             <div className="readme-h1">awesome-cli</div>
             <p className="readme-text">
-              a tiny command-line tool that does surprisingly big things.
+              A tiny command-line tool that does surprisingly big things.
             </p>
-            <div className="readme-h2">project vibes</div>
+            <div className="readme-h2">Project vibes</div>
             <div className="readme-badge">
               <HexagonChart scores={EXAMPLE_SCORES} />
             </div>
             <p className="readme-text muted">
-              — updated automatically every time someone loads your readme.
+              — Updated automatically every time someone loads your README.
             </p>
           </div>
         </div>
       </section>
 
-      {/* ── FOOTER ───────────────────────────────────── */}
+      {/* ── Footer ──────────────────────────────────────────────── */}
       <TornDivider />
-      <footer className="site-footer">
+      <footer className="site-footer container">
         <div className="footer-links">
           <a
             className="footer-link"
@@ -255,12 +317,12 @@ export default function Landing() {
             target="_blank"
             rel="noopener noreferrer"
           >
-            ★ star it on github
+            &#9733; Star it on GitHub
           </a>
         </div>
-        <p className="footer-made">made with crayons &amp; caffeine</p>
+        <p className="footer-made">Made with crayons &amp; caffeine</p>
         <p className="footer-disclaimer">
-          scores are heuristic vibes, not official metrics
+          Scores are heuristic vibes, not official metrics
         </p>
       </footer>
     </div>
