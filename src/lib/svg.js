@@ -206,9 +206,14 @@ function buildHeader(repo) {
   }
 
   // Name sticky note (white, dashed border, rotated 1.2deg).
-  const nameText = repo?.name ? escapeXml(repo.name) : 'RepoVibes';
-  // Estimate name width: ~12px per char at 20px font.
-  const nameW = Math.min(220, Math.max(80, nameText.length * 12 + 24));
+  const rawName = repo?.name ? String(repo.name) : 'RepoVibes';
+  // Estimate name width: ~12px per char at 20px font. Cap at 220px and
+  // truncate with ellipsis so long names don't overflow the note.
+  const maxNameW = 220;
+  const maxChars = Math.floor((maxNameW - 24) / 12);
+  const displayName = rawName.length > maxChars ? `${rawName.slice(0, maxChars - 1)}…` : rawName;
+  const nameText = escapeXml(displayName);
+  const nameW = Math.min(maxNameW, Math.max(80, displayName.length * 12 + 24));
   const nameH = 36;
   const nameX = avatarX + avatarNoteW + 14;
   const nameY = top + 4;
@@ -244,6 +249,11 @@ export function buildHexagonSVG(scores, repo = null) {
 
   return `<svg xmlns="http://www.w3.org/2000/svg" width="${CARD_W}" height="${CARD_H}" viewBox="0 0 ${CARD_W} ${CARD_H}" role="img" aria-label="RepoVibes score chart for ${safeName}">
   <defs>
+    <style>
+      <![CDATA[
+      @import url('https://fonts.googleapis.com/css2?family=Caveat:wght@500;600;700&family=Kalam:wght@400;700&family=Patrick+Hand&display=swap');
+      ]]>
+    </style>
     <pattern id="paper-lines" width="100" height="30" patternUnits="userSpaceOnUse">
       <rect width="100" height="30" fill="none"/>
       <line x1="0" y1="30" x2="100" y2="30" stroke="#3d9be5" stroke-width="0.5" opacity="0.08"/>

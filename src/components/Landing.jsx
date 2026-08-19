@@ -115,7 +115,7 @@ const EXAMPLE_SCORES = {
   popularity: 97,
 };
 const EXAMPLE_REPO = 'facebook/react';
-const EXAMPLE_SNIPPET = `![RepoVibes](https://repovibes.app/api/hexagon/facebook/react.svg)`;
+const EXAMPLE_SNIPPET = `![RepoVibes](https://repovibes.vercel.app/api/hexagon/facebook/react.svg)`;
 
 // A torn-paper strip used as a soft section divider instead of a hard rule.
 function TornDivider() {

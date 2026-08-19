@@ -70,9 +70,10 @@ app.get('/api/scores/:owner/:repo', async (req, res) => {
   }
 });
 
-// POST /api/parse — parse a URL/input server-side (optional, frontend does its own).
-app.get('/api/parse/:input', (req, res) => {
-  const parsed = parseRepoInput(req.params.input);
+// GET /api/parse?input=... — parse a URL/input server-side (optional, frontend does its own).
+app.get('/api/parse', (req, res) => {
+  const input = req.query.input || '';
+  const parsed = parseRepoInput(input);
   if (!parsed) return res.status(400).json({ error: 'invalid repo' });
   res.json(parsed);
 });

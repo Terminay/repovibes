@@ -61,11 +61,15 @@ export async function fetchRepoData(owner, repo) {
   const staleDateCutoff = new Date(Date.now() - 180 * 86400000).toISOString().split('T')[0];
 
   const [
-    contributorsRes, commitsRes, closedIssuesRes, closedCountRes,
+    contributorsRes, contributorsRes2, contributorsRes3, contributorsRes4,
+    commitsRes, closedIssuesRes, closedCountRes,
     openIssuesRes, mergedPRsRes, openPRsRes, readmeRes, releasesRes,
     languagesRes, communityRes, eventsRes, staleIssuesRes,
   ] = await Promise.all([
-    ghFetch(`/repos/${owner}/${repo}/contributors?per_page=100&anon=true`),
+    ghFetch(`/repos/${owner}/${repo}/contributors?per_page=100&anon=true&page=1`),
+    ghFetch(`/repos/${owner}/${repo}/contributors?per_page=100&anon=true&page=2`),
+    ghFetch(`/repos/${owner}/${repo}/contributors?per_page=100&anon=true&page=3`),
+    ghFetch(`/repos/${owner}/${repo}/contributors?per_page=100&anon=true&page=4`),
     ghFetch(`/repos/${owner}/${repo}/commits?per_page=100`),
     ghFetch(`/repos/${owner}/${repo}/issues?state=closed&per_page=30&sort=created&direction=desc`),
     ghFetch(`/search/issues?q=${encodeURIComponent(`repo:${owner}/${repo} is:issue is:closed`)}&per_page=1`),
@@ -86,7 +90,20 @@ export async function fetchRepoData(owner, repo) {
     if (staleSearch?.total_count != null) staleIssueCount = staleSearch.total_count;
   }
 
-  const contributors = await safeJson(contributorsRes, []);
+  const contributors = [
+    ...(await safeJson(contributorsRes, [])),
+    ...(await safeJson(contributorsRes2, [])),
+    ...(await safeJson(contributorsRes3, [])),
+    ...(await safeJson(contributorsRes4, [])),
+  ];
+  // Deduplicate by login (anon contributors have no login, so use id).
+  const seen = new Set();
+  const uniqueContributors = contributors.filter((c) => {
+    const key = c.login || c.id;
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
   const commits = await safeJson(commitsRes, []);
   const closedIssues = await safeJson(closedIssuesRes, []);
   const releases = await safeJson(releasesRes, []);
@@ -241,7 +258,7 @@ export async function fetchRepoData(owner, repo) {
     stars: repoInfo.stargazers_count ?? 0,
     forks: repoInfo.forks_count ?? 0,
     watchers: repoInfo.subscribers_count ?? 0,
-    openRepos: repoInfo.open_issues_count ?? 0,
+    openIssuesCount: repoInfo.open_issues_count ?? 0,
     isArchived: Boolean(repoInfo.archived),
     isFork: Boolean(repoInfo.fork),
     hasPages: Boolean(repoInfo.has_pages),
@@ -253,7 +270,7 @@ export async function fetchRepoData(owner, repo) {
     commitDates,
     recentEventCount,
     // Community
-    contributorCount: Array.isArray(contributors) ? contributors.length : 0,
+    contributorCount: uniqueContributors.length,
     hasCodeOfConduct,
     hasContributing,
     hasIssueTemplate,

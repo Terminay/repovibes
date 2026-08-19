@@ -230,7 +230,7 @@ export function scorePopularity(data) {
   const rawScore = logLerp(stars, 10, 50000);
 
   // Growth rate: stars per day, age-adjusted.
-  const ageDays = Math.max(90, data.ageDays ?? 365);
+  const ageDays = Math.max(1, data.ageDays ?? 365);
   const starsPerDay = stars / ageDays;
   const growthScore = logLerp(starsPerDay, 0.01, 1);
 

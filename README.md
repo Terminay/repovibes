@@ -5,8 +5,6 @@ RepoVibes is a web tool that "checks the vibes" of any public GitHub repository.
 
 These scores are visualized as a unique, hand-drawn hexagon chart. A key feature is the ability to generate a dynamic, embeddable SVG badge of this chart for use in your project's README file. The entire application embraces a fun, sketchy, crayon-and-paper aesthetic.
 
-![RepoVibes Screenshot](https://github.com/Terminay/repovibes/assets/598216/913ac6cc-e70a-43a0-8278-f7b55f1a5a8f)
-
 ## How It Works
 
 1.  **Paste a Repo URL**: Go to the RepoVibes website and enter a public GitHub repository URL or a shorthand like `owner/repo`.
@@ -36,7 +34,7 @@ Here is an example for `facebook/react`:
 
 This will render the following SVG directly in your GitHub profile or repository:
 
-![RepoVibes](https://repovibes.vercel.app/api/hexagon/react/react.svg)
+![RepoVibes](https://repovibes.vercel.app/api/hexagon/facebook/react.svg)
 
 ## Running Locally
 
