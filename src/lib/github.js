@@ -303,3 +303,21 @@ export async function fetchRepoData(owner, repo) {
   setCached(owner, repo, data);
   return data;
 }
+
+// Fetch an image and convert it to a base64 data URI for inline SVG embedding.
+// GitHub's camo proxy blocks external <image href> references inside SVGs,
+// so embedding the avatar as base64 is required for README embeds.
+export async function fetchImageAsBase64(url) {
+  try {
+    const res = await fetch(url, {
+      headers: { 'User-Agent': 'RepoVibes' },
+    });
+    if (!res.ok) return null;
+    const buffer = await res.arrayBuffer();
+    const contentType = res.headers.get('content-type') || 'image/png';
+    const base64 = Buffer.from(buffer).toString('base64');
+    return `data:${contentType};base64,${base64}`;
+  } catch {
+    return null;
+  }
+}

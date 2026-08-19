@@ -3,9 +3,9 @@ import express from 'express';
 import path from 'path';
 import fs from 'fs';
 import { fileURLToPath } from 'url';
-import { fetchRepoData } from './src/lib/github.js';
+import { fetchRepoData, fetchImageAsBase64 } from './src/lib/github.js';
 import { computeScores } from './src/lib/scoring.js';
-import { buildHexagonSVG } from './src/lib/svg.js';
+import { buildHexagonSVG, buildErrorSVG } from './src/lib/svg.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const app = express();
@@ -37,10 +37,12 @@ app.get('/api/hexagon/:owner/:repo.svg', async (req, res) => {
   try {
     const data = await fetchRepoData(owner, cleanRepo);
     const scores = computeScores(data);
+    const avatarBase64 = data.avatar ? await fetchImageAsBase64(data.avatar) : null;
     const svg = buildHexagonSVG(scores, {
       name: data.name,
       stars: data.stars,
       avatar: data.avatar,
+      avatarBase64,
     });
 
     res.setHeader('Content-Type', 'image/svg+xml');
@@ -77,21 +79,6 @@ app.get('/api/parse', (req, res) => {
   if (!parsed) return res.status(400).json({ error: 'invalid repo' });
   res.json(parsed);
 });
-
-function buildErrorSVG(message, repo) {
-  return `<svg xmlns="http://www.w3.org/2000/svg" width="400" height="120" viewBox="0 0 400 120">
-    <rect x="4" y="4" width="392" height="112" rx="10" fill="#fffaf0" stroke="#3a3128" stroke-width="3"/>
-    <text x="200" y="40" text-anchor="middle" font-family="'Caveat', cursive" font-size="26" font-weight="700" fill="#d8452f">RepoVibes</text>
-    <text x="200" y="66" text-anchor="middle" font-family="'Patrick Hand', cursive" font-size="16" fill="#6b5f4d">${escapeXml(repo)}</text>
-    <text x="200" y="90" text-anchor="middle" font-family="'Patrick Hand', cursive" font-size="15" fill="#d8452f">${escapeXml(message)}</text>
-  </svg>`;
-}
-
-function escapeXml(s) {
-  return String(s).replace(/[<>&'"]/g, (c) => ({
-    '<': '&lt;', '>': '&gt;', '&': '&amp;', "'": '&apos;', '"': '&quot;',
-  }[c]));
-}
 
 // Serve the built frontend in production (only if dist/ exists).
 if (distExists) {
