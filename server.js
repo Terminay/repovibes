@@ -3,7 +3,7 @@ import express from 'express';
 import path from 'path';
 import fs from 'fs';
 import { fileURLToPath } from 'url';
-import { fetchRepoData, fetchImageAsBase64 } from './src/lib/github.js';
+import { fetchRepoData, fetchImageAsBase64, toPublicRepo } from './src/lib/github.js';
 import { computeScores } from './src/lib/scoring.js';
 import { buildHexagonSVG, buildErrorSVG } from './src/lib/svg.js';
 
@@ -66,7 +66,7 @@ app.get('/api/scores/:owner/:repo', async (req, res) => {
     const data = await fetchRepoData(owner, repo);
     const scores = computeScores(data);
     res.setHeader('Cache-Control', 'public, max-age=3600');
-    res.json({ data, scores });
+    res.json({ repo: toPublicRepo(data), scores });
   } catch (err) {
     res.status(err.status || 500).json({ error: err.message || 'failed' });
   }

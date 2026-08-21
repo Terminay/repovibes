@@ -79,8 +79,8 @@ export default function App() {
         const body = await res.json().catch(() => ({}));
         throw new Error(body.error || `Failed (${res.status})`);
       }
-      const { data, scores } = await res.json();
-      setResult({ data, scores });
+      const { repo, scores } = await res.json();
+      setResult({ repo, scores });
       setState('loaded');
     } catch (err) {
       setState('error');
@@ -91,7 +91,7 @@ export default function App() {
   // Build the embed URL from the current origin so it works on any deployment.
   const origin = typeof window !== 'undefined' ? window.location.origin : 'https://your-domain';
   const embedUrl = result
-    ? `${origin}/api/hexagon/${result.data.owner}/${result.data.repo}.svg`
+    ? `${origin}/api/hexagon/${result.repo.owner}/${result.repo.repo}.svg`
     : '';
   const embedSnippet = result ? `![RepoVibes](${embedUrl})` : '';
 
@@ -235,17 +235,17 @@ export default function App() {
           <>
             <div className="report-card">
               <h2 className="report-heading">Vibe Report</h2>
-              <div className="repo-info">
+                <div className="repo-info">
                 <div className="sticky-note avatar-note">
-                  <img src={result.data.avatar || '/placeholder.svg'} alt="" />
+                  <img src={result.repo.avatar || '/placeholder.svg'} alt="" />
                 </div>
-                <div className="sticky-note name-note">{result.data.name}</div>
+                <div className="sticky-note name-note">{result.repo.name}</div>
                 <div className="sticky-note star-note">
-                  &#9733; {formatNum(result.data.stars)}
+                  &#9733; {formatNum(result.repo.stars)}
                 </div>
               </div>
               <div className="report-chart">
-                <HexagonChart scores={result.scores} repo={result.data} isDark={isDark} />
+                <HexagonChart scores={result.scores} repo={result.repo} isDark={isDark} />
               </div>
 
               {/* Score breakdown */}

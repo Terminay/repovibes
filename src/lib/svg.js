@@ -4,6 +4,7 @@
 // with sticky-note repo header matching the webapp's look.
 import rough from 'roughjs';
 import { AXES } from './scoring.js';
+import { CAVEAT_700_WOFF2, PATRICK_HAND_400_WOFF2 } from './fonts.js';
 
 let _gen;
 function gen() {
@@ -98,6 +99,26 @@ function formatNum(n) {
   if (n >= 1000) return `${(n / 1000).toFixed(1).replace(/\.0$/, '')}k`;
   return String(n);
 }
+
+// Embedded latin subsets of the Google Fonts used by the chart. Self-contained
+// data URIs mean the SVG renders correctly even when served through image
+// proxies (GitHub Camo, etc.) that block external stylesheets.
+const FONT_FACE_CSS = `
+@font-face {
+  font-family: 'Caveat';
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  src: url(data:font/woff2;base64,${CAVEAT_700_WOFF2}) format('woff2');
+}
+@font-face {
+  font-family: 'Patrick Hand';
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url(data:font/woff2;base64,${PATRICK_HAND_400_WOFF2}) format('woff2');
+}
+`;
 
 function pathsToSvg(paths, extra = '') {
   return paths.map((p) => {
@@ -230,7 +251,7 @@ function buildHeader(repo) {
   const nameX = avatarX + avatarNoteW + 14;
   const nameY = top + 4;
   header += buildStickyNote(nameX, nameY, nameW, nameH, '#ffffff', 1.2, true);
-  header += `<g transform="rotate(${1.2} ${nameX + nameW / 2} ${nameY + nameH / 2})"><text x="${nameX + 12}" y="${nameY + 25}" font-family="'Patrick Hand', 'Comic Sans MS', cursive" font-size="20" font-weight="700" fill="var(--rv-ink)">${nameText}</text></g>`;
+  header += `<g transform="rotate(${1.2} ${nameX + nameW / 2} ${nameY + nameH / 2})"><text x="${nameX + 12}" y="${nameY + 25}" font-family="'Patrick Hand', 'Comic Sans MS', cursive" font-size="20" font-weight="700" fill="#3a3128">${nameText}</text></g>`;
 
   // Star sticky note (green, rotated 2.5deg, right-aligned).
   const starsText = repo?.stars != null ? `★ ${formatNum(repo.stars)}` : '';
@@ -260,7 +281,8 @@ export function buildHexagonSVG(scores, repo = null) {
   <defs>
     <style>
       <![CDATA[
-      :root {
+      ${FONT_FACE_CSS}
+      svg {
         --rv-paper: #f6efdd;
         --rv-paper-light: #fffaf0;
         --rv-ink: #3a3128;
@@ -273,7 +295,7 @@ export function buildHexagonSVG(scores, repo = null) {
         --rv-blue-line: rgba(61,155,229,0.08);
       }
       @media (prefers-color-scheme: dark) {
-        :root {
+        svg {
           --rv-paper: #2a2520;
           --rv-paper-light: #1e1a16;
           --rv-ink: #d4c9b8;
@@ -309,14 +331,15 @@ export function buildErrorSVG(message, repo) {
     <defs>
       <style>
         <![CDATA[
-        :root {
+        ${FONT_FACE_CSS}
+        svg {
           --rv-paper-light: #fffaf0;
           --rv-ink: #3a3128;
           --rv-ink-soft: #6b5f4d;
           --rv-error: #d8452f;
         }
         @media (prefers-color-scheme: dark) {
-          :root {
+          svg {
             --rv-paper-light: #1e1a16;
             --rv-ink: #d4c9b8;
             --rv-ink-soft: #a89b87;

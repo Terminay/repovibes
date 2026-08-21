@@ -304,6 +304,63 @@ export async function fetchRepoData(owner, repo) {
   return data;
 }
 
+// Return a cleaned-up, public-facing repo object for the JSON API.
+// Drops internal-only fields and keeps the identity, counts, and the
+// computed signals that feed into each score axis.
+export function toPublicRepo(data) {
+  return {
+    // Identity
+    name: data.name,
+    owner: data.owner,
+    repo: data.repo,
+    avatar: data.avatar,
+    description: data.description,
+    homepage: data.homepage,
+    // Counts
+    stars: data.stars,
+    forks: data.forks,
+    watchers: data.watchers,
+    topics: data.topics,
+    languageCount: data.languageCount,
+    // Flags
+    isArchived: data.isArchived,
+    isFork: data.isFork,
+    hasLicense: data.hasLicense,
+    defaultBranch: data.defaultBranch,
+    // Activity signals
+    lastCommitDaysAgo: data.lastCommitDaysAgo,
+    recentCommitCount: data.recentCommitCount,
+    recentAuthorCount: data.recentAuthorCount,
+    recentEventCount: data.recentEventCount,
+    // Community signals
+    contributorCount: data.contributorCount,
+    hasCodeOfConduct: data.hasCodeOfConduct,
+    hasContributing: data.hasContributing,
+    hasIssueTemplate: data.hasIssueTemplate,
+    hasPRTemplate: data.hasPRTemplate,
+    hasDiscussions: data.hasDiscussions,
+    // Responsiveness signals
+    openIssues: data.openIssues,
+    closedIssues: data.closedIssues,
+    avgIssueCloseDays: data.avgIssueCloseDays,
+    medianIssueCloseDays: data.medianIssueCloseDays,
+    staleIssueCount: data.staleIssueCount,
+    openPRCount: data.openPRCount,
+    mergedPRCount: data.mergedPRCount,
+    // Documentation signals
+    readmeLength: data.readmeLength,
+    hasWiki: data.hasWiki,
+    // Stability signals
+    releaseCount: data.releaseCount,
+    latestReleaseDaysAgo: data.latestReleaseDaysAgo,
+    releaseCadenceDays: data.releaseCadenceDays,
+    // Popularity signals
+    ageDays: data.ageDays,
+    recentWatchEvents: data.recentWatchEvents,
+    recentForkEvents: data.recentForkEvents,
+  };
+}
+
 // Fetch an image and convert it to a base64 data URI for inline SVG embedding.
 // GitHub's camo proxy blocks external <image href> references inside SVGs,
 // so embedding the avatar as base64 is required for README embeds.
